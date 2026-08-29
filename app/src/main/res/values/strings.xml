@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">AE POS</string>
+    <string name="pos_sales">Ventas</string>
+    <string name="pos_inventory">Inventario</string>
+    <string name="pos_reports">Reportes</string>
+    <string name="pos_cashier">Caja</string>
+    <string name="pos_search_product">Buscar producto o código...</string>
+    <string name="pos_total">Total</string>
+    <string name="pos_subtotal">Subtotal</string>
+    <string name="pos_checkout">Cobrar</string>
+    <string name="pos_currency">S/</string>
+</resources>
