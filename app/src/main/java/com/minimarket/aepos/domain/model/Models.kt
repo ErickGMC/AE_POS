@@ -34,7 +34,8 @@ enum class PaymentMethod(val label: String) {
     YAPE("Yape"),
     PLIN("Plin"),
     TARJETA("Tarjeta"),
-    TRANSFERENCIA("Transferencia")
+    TRANSFERENCIA("Transferencia"),
+    MIXTO("Mixto")
 }
 
 data class Sale(

@@ -26,6 +26,7 @@ import androidx.lifecycle.viewModelScope
 import com.minimarket.aepos.data.local.entity.CashMovementEntity
 import com.minimarket.aepos.data.local.entity.CashShiftEntity
 import com.minimarket.aepos.data.repository.CashRepository
+import com.minimarket.aepos.domain.model.User
 import com.minimarket.aepos.ui.reports.MetricCard
 import com.minimarket.aepos.ui.theme.*
 import kotlinx.coroutines.flow.*
@@ -115,6 +116,7 @@ class CashViewModel(
 @Composable
 fun CashScreen(
     viewModel: CashViewModel,
+    currentUser: User? = null,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -344,6 +346,7 @@ fun CashScreen(
     // Modal Apertura
     if (state.isOpenShiftOpen) {
         OpenCashDialog(
+            defaultCashier = currentUser?.nombreCompleto ?: "Cajero",
             onDismiss = { viewModel.closeStartShiftDialog() },
             onConfirm = { initial, cashier -> viewModel.startShift(initial, cashier) }
         )
@@ -372,11 +375,12 @@ fun CashScreen(
 
 @Composable
 fun OpenCashDialog(
+    defaultCashier: String = "Cajero",
     onDismiss: () -> Unit,
     onConfirm: (initialAmount: Double, cashier: String) -> Unit
 ) {
-    var initialStr by remember { mutableStateOf("100.00") }
-    var cashier by remember { mutableStateOf("Cajero Principal") }
+    var initialStr by remember { mutableStateOf("0.00") }
+    var cashier by remember { mutableStateOf(defaultCashier) }
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedBorderColor = Emerald500,

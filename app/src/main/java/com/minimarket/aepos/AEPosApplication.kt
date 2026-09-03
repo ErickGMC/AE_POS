@@ -34,7 +34,7 @@ class AEPosApplication : Application() {
     }
 
     val cashRepository by lazy {
-        CashRepository(database, applicationScope)
+        CashRepository(database, syncService, applicationScope)
     }
 
     val userRepository by lazy {

@@ -235,15 +235,18 @@ class SalesViewModel(
         val state = _uiState.value
         if (state.cart.isEmpty() || state.isProcessing) return
 
+        val montoEfectivo = pagos.filter { it.metodo.equals("Efectivo", ignoreCase = true) }.sumOf { it.monto }
+
         _uiState.update { it.copy(isProcessing = true, isPagosMixtosOpen = false) }
 
         viewModelScope.launch {
             val result = saleRepository.processSale(
                 items = state.cart,
                 total = state.total,
-                paymentMethod = PaymentMethod.EFECTIVO,
+                paymentMethod = PaymentMethod.MIXTO,
                 customerName = state.customerName,
-                customerDoc = state.customerDoc
+                customerDoc = state.customerDoc,
+                montoEfectivo = montoEfectivo
             )
 
             result.fold(

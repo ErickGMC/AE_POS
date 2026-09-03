@@ -31,6 +31,12 @@ interface CashDao {
     @Query("UPDATE cajas_turnos SET totalVentasDigital = totalVentasDigital + :amount WHERE id = :shiftId")
     suspend fun addDigitalSale(shiftId: String, amount: Double)
 
+    @Query("UPDATE cajas_turnos SET totalVentasEfectivo = MAX(0.0, totalVentasEfectivo - :amount) WHERE id = :shiftId")
+    suspend fun subtractCashSale(shiftId: String, amount: Double)
+
+    @Query("UPDATE cajas_turnos SET totalVentasDigital = MAX(0.0, totalVentasDigital - :amount) WHERE id = :shiftId")
+    suspend fun subtractDigitalSale(shiftId: String, amount: Double)
+
     @Query("UPDATE cajas_turnos SET totalIngresos = totalIngresos + :amount WHERE id = :shiftId")
     suspend fun addIncome(shiftId: String, amount: Double)
 

@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -73,7 +74,10 @@ class ReportsViewModel(
     }
 
     fun selectSale(sale: Sale) {
-        _uiState.update { it.copy(selectedSale = sale) }
+        viewModelScope.launch {
+            val fullItems = saleRepository.getSaleDetailsWithProducts(sale.id)
+            _uiState.update { it.copy(selectedSale = sale.copy(items = fullItems)) }
+        }
     }
 
     fun clearSelectedSale() {
@@ -161,7 +165,7 @@ fun ReportsScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
-                        imageVector = Icons.Default.ReceiptLong,
+                        imageVector = Icons.AutoMirrored.Filled.ReceiptLong,
                         contentDescription = null,
                         tint = Slate600,
                         modifier = Modifier.size(56.dp)

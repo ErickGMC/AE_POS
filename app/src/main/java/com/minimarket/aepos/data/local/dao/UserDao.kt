@@ -26,4 +26,15 @@ interface UserDao {
 
     @Query("DELETE FROM usuarios WHERE id = :id")
     suspend fun deleteUser(id: String)
+
+    @Query("DELETE FROM usuarios")
+    suspend fun deleteAllUsers()
+
+    @Transaction
+    suspend fun syncUsers(users: List<UserEntity>) {
+        deleteAllUsers()
+        if (users.isNotEmpty()) {
+            insertAll(users)
+        }
+    }
 }

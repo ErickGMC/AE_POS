@@ -21,9 +21,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.minimarket.aepos.ui.auth.AuthViewModel
 import com.minimarket.aepos.ui.auth.LoginScreen
+import com.minimarket.aepos.ui.cash.CashViewModel
 import com.minimarket.aepos.ui.inventory.InventoryViewModel
 import com.minimarket.aepos.ui.navigation.AdaptivePosScaffold
 import com.minimarket.aepos.ui.reports.ReportsViewModel
+import com.minimarket.aepos.ui.sales.SalesViewModel
 import com.minimarket.aepos.ui.shopping.ShoppingListViewModel
 import com.minimarket.aepos.ui.theme.AEPOSTheme
 import com.minimarket.aepos.ui.theme.Emerald500
@@ -39,6 +41,24 @@ class MainActivity : ComponentActivity() {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 return AuthViewModel(app.authRepository) as T
+            }
+        }
+    }
+
+    private val salesViewModel: SalesViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return SalesViewModel(app.productRepository, app.saleRepository) as T
+            }
+        }
+    }
+
+    private val cashViewModel: CashViewModel by viewModels {
+        object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return CashViewModel(app.cashRepository) as T
             }
         }
     }
@@ -107,6 +127,8 @@ class MainActivity : ComponentActivity() {
                     AdaptivePosScaffold(
                         currentUser = authState.currentUser!!,
                         windowWidthSizeClass = windowSizeClass.widthSizeClass,
+                        salesViewModel = salesViewModel,
+                        cashViewModel = cashViewModel,
                         inventoryViewModel = inventoryViewModel,
                         shoppingViewModel = shoppingViewModel,
                         reportsViewModel = reportsViewModel,

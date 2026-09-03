@@ -108,8 +108,9 @@ fun SaleDetailDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
+                                    val prodName = item.productoNombre.ifBlank { item.productoId }
                                     Text(
-                                        text = "${if (item.cantidad % 1.0 == 0.0) item.cantidad.toInt().toString() else item.cantidad.toString()}x ${item.productoId}",
+                                        text = "${if (item.cantidad % 1.0 == 0.0) item.cantidad.toInt().toString() else item.cantidad.toString()}x $prodName",
                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                                         color = Color.White
                                     )
@@ -158,12 +159,22 @@ fun SaleDetailDialog(
                 ) {
                     Button(
                         onClick = {
+                            val itemsFormatted = if (sale.items.isNotEmpty()) {
+                                sale.items.joinToString("\n") { itm ->
+                                    val cant = if (itm.cantidad % 1.0 == 0.0) itm.cantidad.toInt().toString() else itm.cantidad.toString()
+                                    val nm = itm.productoNombre.ifBlank { itm.productoId }
+                                    "• $cant x $nm — S/ ${"%.2f".format(itm.subtotal)}"
+                                } + "\n--------------------------------"
+                            } else ""
+
                             val ticketText = """
                                 🧾 *MINIMARKET FLOR - TICKET ELECTRÓNICO*
                                 📋 *Comprobante:* ${sale.numeroComprobante}
                                 📅 *Fecha:* ${sale.fecha}
                                 💳 *Método de Pago:* ${sale.metodoPago.label}
-                                💵 *Total:* S/ ${"%.2f".format(sale.total)}
+                                --------------------------------
+                                $itemsFormatted
+                                💵 *TOTAL:* S/ ${"%.2f".format(sale.total)}
                                 
                                 ¡Muchas gracias por su preferencia!
                             """.trimIndent()

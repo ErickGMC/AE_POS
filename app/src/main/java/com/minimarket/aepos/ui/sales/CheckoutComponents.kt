@@ -116,7 +116,7 @@ fun CheckoutModalSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(PaymentMethod.entries) { method ->
+                items(PaymentMethod.entries.filter { it != PaymentMethod.MIXTO }) { method ->
                     val isSelected = state.selectedPaymentMethod == method
                     val icon = when (method) {
                         PaymentMethod.EFECTIVO -> Icons.Default.AttachMoney
@@ -124,6 +124,7 @@ fun CheckoutModalSheet(
                         PaymentMethod.PLIN -> Icons.Default.QrCode
                         PaymentMethod.TARJETA -> Icons.Default.CreditCard
                         PaymentMethod.TRANSFERENCIA -> Icons.Default.AccountBalance
+                        PaymentMethod.MIXTO -> Icons.Default.AccountBalanceWallet
                     }
 
                     Surface(

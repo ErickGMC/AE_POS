@@ -26,10 +26,15 @@ import androidx.compose.ui.unit.sp
 import com.minimarket.aepos.data.remote.FirestoreSyncService
 import com.minimarket.aepos.data.remote.SyncStateStatus
 import com.minimarket.aepos.domain.model.User
+import com.minimarket.aepos.ui.cash.CashScreen
+import com.minimarket.aepos.ui.cash.CashViewModel
 import com.minimarket.aepos.ui.inventory.InventoryScreen
 import com.minimarket.aepos.ui.inventory.InventoryViewModel
 import com.minimarket.aepos.ui.reports.ReportsScreen
 import com.minimarket.aepos.ui.reports.ReportsViewModel
+import com.minimarket.aepos.ui.sales.PhoneSalesScreen
+import com.minimarket.aepos.ui.sales.SalesViewModel
+import com.minimarket.aepos.ui.sales.TabletSalesScreen
 import com.minimarket.aepos.ui.shopping.ShoppingListScreen
 import com.minimarket.aepos.ui.shopping.ShoppingListViewModel
 import com.minimarket.aepos.ui.theme.*
@@ -43,16 +48,20 @@ enum class PosDestination(
     val title: String,
     val icon: ImageVector
 ) {
+    SALES("sales", "Vender", Icons.Default.PointOfSale),
+    CASH("cash", "Caja", Icons.Default.AccountBalanceWallet),
     PRODUCTS("products", "Inventario", Icons.Default.Inventory2),
     SALES_HISTORY("sales_history", "Ventas PC", Icons.AutoMirrored.Filled.ReceiptLong),
     SHOPPING("shopping", "Compras", Icons.AutoMirrored.Filled.FactCheck),
-    USERS("users", "Colaboradores", Icons.Default.Group)
+    USERS("users", "Personal", Icons.Default.Group)
 }
 
 @Composable
 fun AdaptivePosScaffold(
     currentUser: User,
     windowWidthSizeClass: WindowWidthSizeClass,
+    salesViewModel: SalesViewModel,
+    cashViewModel: CashViewModel,
     inventoryViewModel: InventoryViewModel,
     shoppingViewModel: ShoppingListViewModel,
     reportsViewModel: ReportsViewModel,
@@ -62,12 +71,18 @@ fun AdaptivePosScaffold(
     modifier: Modifier = Modifier
 ) {
     val usersState by usersViewModel.uiState.collectAsState()
-    val activeUser = usersState.currentUser.takeIf { it.id.isNotBlank() && it.activo } ?: currentUser
+    val activeUser = usersState.currentUser.takeIf { it != null && it.id.isNotBlank() && it.activo } ?: currentUser
+
+    LaunchedEffect(currentUser) {
+        usersViewModel.setCurrentUser(currentUser)
+    }
 
     // Filtrar destinos basados en permisos
     val visibleDestinations = remember(activeUser) {
         PosDestination.entries.filter { dest ->
             when (dest) {
+                PosDestination.SALES -> activeUser.hasPermission(User.PERM_SALES_WRITE) || activeUser.isAdmin
+                PosDestination.CASH -> activeUser.hasPermission(User.PERM_SALES_WRITE) || activeUser.isAdmin
                 PosDestination.PRODUCTS -> activeUser.hasPermission(User.PERM_INVENTORY_READ) || activeUser.isAdmin
                 PosDestination.SALES_HISTORY -> activeUser.hasPermission(User.PERM_REPORTS_VIEW) || activeUser.isAdmin
                 PosDestination.SHOPPING -> activeUser.hasPermission(User.PERM_SHOPPING_MANAGE) || activeUser.isAdmin
@@ -77,12 +92,12 @@ fun AdaptivePosScaffold(
     }
 
     var currentDestination by remember(visibleDestinations) { 
-        mutableStateOf(visibleDestinations.firstOrNull() ?: PosDestination.PRODUCTS) 
+        mutableStateOf(visibleDestinations.firstOrNull() ?: PosDestination.SALES) 
     }
 
     LaunchedEffect(visibleDestinations) {
         if (currentDestination !in visibleDestinations) {
-            currentDestination = visibleDestinations.firstOrNull() ?: PosDestination.PRODUCTS
+            currentDestination = visibleDestinations.firstOrNull() ?: PosDestination.SALES
         }
     }
     
@@ -230,10 +245,12 @@ fun AdaptivePosScaffold(
                     .fillMaxHeight()
             ) {
                 when (currentDestination) {
+                    PosDestination.SALES -> TabletSalesScreen(viewModel = salesViewModel)
+                    PosDestination.CASH -> CashScreen(viewModel = cashViewModel, currentUser = activeUser)
                     PosDestination.PRODUCTS -> InventoryScreen(viewModel = inventoryViewModel, currentUser = activeUser)
                     PosDestination.SALES_HISTORY -> ReportsScreen(viewModel = reportsViewModel, currentUser = activeUser)
                     PosDestination.SHOPPING -> ShoppingListScreen(viewModel = shoppingViewModel)
-                    PosDestination.USERS -> UsersScreen(viewModel = usersViewModel)
+                    PosDestination.USERS -> UsersScreen(viewModel = usersViewModel, currentUser = activeUser)
                 }
             }
         }
@@ -368,10 +385,12 @@ fun AdaptivePosScaffold(
                     .padding(paddingValues)
             ) {
                 when (currentDestination) {
+                    PosDestination.SALES -> PhoneSalesScreen(viewModel = salesViewModel)
+                    PosDestination.CASH -> CashScreen(viewModel = cashViewModel, currentUser = activeUser)
                     PosDestination.PRODUCTS -> InventoryScreen(viewModel = inventoryViewModel, currentUser = activeUser)
                     PosDestination.SALES_HISTORY -> ReportsScreen(viewModel = reportsViewModel, currentUser = activeUser)
                     PosDestination.SHOPPING -> ShoppingListScreen(viewModel = shoppingViewModel)
-                    PosDestination.USERS -> UsersScreen(viewModel = usersViewModel)
+                    PosDestination.USERS -> UsersScreen(viewModel = usersViewModel, currentUser = activeUser)
                 }
             }
         }

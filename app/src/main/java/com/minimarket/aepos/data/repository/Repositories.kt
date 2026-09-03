@@ -165,6 +165,7 @@ class ProductRepository(
 
 class CashRepository(
     private val db: AppDatabase,
+    private val syncService: FirestoreSyncService,
     private val scope: CoroutineScope
 ) {
     private val cashDao = db.cashDao()
@@ -187,6 +188,9 @@ class CashRepository(
                 estado = "abierta"
             )
             cashDao.insertOrUpdateShift(shift)
+            scope.launch(Dispatchers.IO) {
+                syncService.uploadShift(shift)
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -207,6 +211,9 @@ class CashRepository(
                 observaciones = observaciones
             )
             cashDao.insertOrUpdateShift(closedShift)
+            scope.launch(Dispatchers.IO) {
+                syncService.uploadShift(closedShift)
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -230,6 +237,9 @@ class CashRepository(
             } else {
                 cashDao.addExpense(shiftId, monto)
             }
+            scope.launch(Dispatchers.IO) {
+                syncService.uploadMovement(movement)
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -248,17 +258,30 @@ class SaleRepository(
 
     val allSalesFlow: Flow<List<Sale>> = saleDao.getAllSalesFlow().map { entities ->
         entities.map { entity ->
-            val details = saleDao.getDetailsForSale(entity.id)
-            entity.toDomain(details)
+            entity.toDomainWithProducts(emptyList())
         }
     }
 
     fun getSalesByDateFlow(datePrefix: String): Flow<List<Sale>> {
         return saleDao.getSalesByDateFlow(datePrefix).map { entities ->
             entities.map { entity ->
-                val details = saleDao.getDetailsForSale(entity.id)
-                entity.toDomain(details)
+                entity.toDomainWithProducts(emptyList())
             }
+        }
+    }
+
+    suspend fun getSaleDetailsWithProducts(saleId: String): List<SaleDetail> {
+        val details = saleDao.getDetailsWithProductForSale(saleId)
+        return details.map {
+            SaleDetail(
+                id = it.id,
+                ventaId = it.venta_id,
+                productoId = it.producto_id,
+                productoNombre = it.producto_nombre ?: "Producto",
+                cantidad = it.cantidad,
+                precioUnitario = it.precio_unitario,
+                subtotal = it.subtotal
+            )
         }
     }
 
@@ -270,7 +293,8 @@ class SaleRepository(
         total: Double,
         paymentMethod: PaymentMethod,
         customerName: String? = null,
-        customerDoc: String? = null
+        customerDoc: String? = null,
+        montoEfectivo: Double? = null
     ): Result<String> {
         if (items.isEmpty()) return Result.failure(Exception("El carrito está vacío"))
 
@@ -324,10 +348,25 @@ class SaleRepository(
                 // 3. Incrementar correlativo
                 correlativeDao.increment(serie)
 
+                // 4. Actualizar turno de caja activo si existe
+                val activeShift = db.cashDao().getActiveShift()
+                if (activeShift != null) {
+                    if (montoEfectivo != null) {
+                        val ef = Math.round(montoEfectivo * 100.0) / 100.0
+                        val dig = Math.max(0.0, Math.round((sEntity.total - ef) * 100.0) / 100.0)
+                        if (ef > 0) db.cashDao().addCashSale(activeShift.id, ef)
+                        if (dig > 0) db.cashDao().addDigitalSale(activeShift.id, dig)
+                    } else if (paymentMethod == PaymentMethod.EFECTIVO) {
+                        db.cashDao().addCashSale(activeShift.id, sEntity.total)
+                    } else {
+                        db.cashDao().addDigitalSale(activeShift.id, sEntity.total)
+                    }
+                }
+
                 Triple(comprobanteFormateado, sEntity, dEntities)
             }
 
-            // 4. Subir a Firestore en background
+            // 5. Subir a Firestore en background
             scope.launch(Dispatchers.IO) {
                 syncService.uploadSale(saleEntity, detailEntities)
             }
@@ -340,12 +379,28 @@ class SaleRepository(
 
     suspend fun cancelSale(saleId: String): Result<Unit> {
         return try {
-            db.withTransaction {
-                val details = saleDao.getDetailsForSale(saleId)
-                for (d in details) {
+            val (details, sale) = db.withTransaction {
+                val s = saleDao.getSaleById(saleId)
+                val dList = saleDao.getDetailsForSale(saleId)
+                for (d in dList) {
                     productDao.increaseStock(d.producto_id, d.cantidad)
                 }
                 saleDao.cancelSale(saleId)
+
+                // Revertir del turno de caja activo si existe
+                val activeShift = db.cashDao().getActiveShift()
+                if (activeShift != null && s != null) {
+                    if (s.metodoPago.equals(PaymentMethod.EFECTIVO.label, ignoreCase = true)) {
+                        db.cashDao().subtractCashSale(activeShift.id, s.total)
+                    } else {
+                        db.cashDao().subtractDigitalSale(activeShift.id, s.total)
+                    }
+                }
+
+                Pair(dList, s)
+            }
+            scope.launch(Dispatchers.IO) {
+                syncService.cancelSale(saleId, details)
             }
             Result.success(Unit)
         } catch (e: Exception) {
@@ -353,7 +408,7 @@ class SaleRepository(
         }
     }
 
-    private fun SaleEntity.toDomain(details: List<SaleDetailEntity>) = Sale(
+    private fun SaleEntity.toDomainWithProducts(details: List<com.minimarket.aepos.data.local.dao.SaleDetailWithProduct>) = Sale(
         id = id,
         fecha = fecha,
         total = total,
@@ -369,7 +424,7 @@ class SaleRepository(
                 id = it.id,
                 ventaId = it.venta_id,
                 productoId = it.producto_id,
-                productoNombre = "",
+                productoNombre = it.producto_nombre ?: "",
                 cantidad = it.cantidad,
                 precioUnitario = it.precio_unitario,
                 subtotal = it.subtotal

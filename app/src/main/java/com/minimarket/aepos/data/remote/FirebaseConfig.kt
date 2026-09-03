@@ -7,6 +7,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
+import com.google.firebase.firestore.PersistentCacheSettings
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.FirebaseStorage
@@ -38,7 +39,7 @@ object FirebaseConfig {
 
             // Habilitar persistencia offline y rendimiento óptimo en Firestore
             val settings = FirebaseFirestoreSettings.Builder()
-                .setPersistenceEnabled(true)
+                .setLocalCacheSettings(PersistentCacheSettings.newBuilder().build())
                 .build()
             Firebase.firestore.firestoreSettings = settings
 

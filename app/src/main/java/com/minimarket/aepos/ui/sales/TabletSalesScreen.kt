@@ -225,7 +225,7 @@ fun TabletSalesScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    items(PaymentMethod.entries) { method ->
+                    items(PaymentMethod.entries.filter { it != PaymentMethod.MIXTO }) { method ->
                         val isSelected = state.selectedPaymentMethod == method
                         Surface(
                             modifier = Modifier

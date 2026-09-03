@@ -37,15 +37,7 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 data class UsersUiState(
-    val currentUser: User = User(
-        id = "user_admin_001",
-        username = "admin",
-        nombreCompleto = "Administrador Principal",
-        pin = "1234",
-        role = UserRole.ADMIN,
-        permisos = listOf("all"),
-        activo = true
-    ),
+    val currentUser: User? = null,
     val allUsers: List<User> = emptyList(),
     val isUserSwitchOpen: Boolean = false,
     val isAddEditUserOpen: Boolean = false,
@@ -66,11 +58,20 @@ class UsersViewModel(
         observeUsers()
     }
 
+    fun setCurrentUser(user: User) {
+        _uiState.update { it.copy(currentUser = user) }
+    }
+
     private fun observeUsers() {
         viewModelScope.launch {
             userRepository.allUsersFlow.collect { users ->
                 _uiState.update { state ->
-                    val updatedCurrent = users.find { it.id == state.currentUser.id } ?: state.currentUser
+                    val currentId = state.currentUser?.id
+                    val updatedCurrent = if (currentId != null) {
+                        users.find { it.id == currentId } ?: state.currentUser
+                    } else {
+                        users.firstOrNull { it.role == UserRole.ADMIN && it.activo } ?: users.firstOrNull { it.activo }
+                    }
                     state.copy(allUsers = users, currentUser = updatedCurrent)
                 }
             }
@@ -162,14 +163,14 @@ class UsersViewModel(
     }
 
     fun toggleUserActive(user: User) {
-        if (user.id == "user_admin_001") return
+        if (user.id == _uiState.value.currentUser?.id) return
         viewModelScope.launch {
             userRepository.saveUser(user.copy(activo = !user.activo))
         }
     }
 
     fun deleteUser(id: String) {
-        if (id == "user_admin_001" || id == _uiState.value.currentUser.id) return
+        if (id == _uiState.value.currentUser?.id) return
         viewModelScope.launch {
             userRepository.deleteUser(id)
         }
@@ -179,15 +180,23 @@ class UsersViewModel(
 @Composable
 fun UsersScreen(
     viewModel: UsersViewModel,
+    currentUser: User? = null,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
+    val activeUser = state.currentUser ?: currentUser ?: User(
+        id = "",
+        username = "usuario",
+        nombreCompleto = "Usuario POS",
+        role = UserRole.COLABORADOR,
+        pin = ""
+    )
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = Slate950,
         floatingActionButton = {
-            if (state.currentUser.isAdmin) {
+            if (activeUser.isAdmin) {
                 FloatingActionButton(
                     onClick = { viewModel.openAddUser() },
                     containerColor = Emerald500,
@@ -252,12 +261,12 @@ fun UsersScreen(
                     Box(contentAlignment = Alignment.BottomEnd) {
                         Surface(
                             shape = CircleShape,
-                            color = if (state.currentUser.isAdmin) Emerald500 else Blue500,
+                            color = if (activeUser.isAdmin) Emerald500 else Blue500,
                             modifier = Modifier.size(48.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(
-                                    text = state.currentUser.nombreCompleto.take(1).uppercase(),
+                                    text = activeUser.nombreCompleto.take(1).uppercase().ifBlank { "U" },
                                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
                                     color = Color.White
                                 )
@@ -280,12 +289,12 @@ fun UsersScreen(
                             fontWeight = FontWeight.Black
                         )
                         Text(
-                            text = state.currentUser.nombreCompleto,
+                            text = activeUser.nombreCompleto,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = Color.White
                         )
                         Text(
-                            text = "${state.currentUser.role.label} • @${state.currentUser.username}",
+                            text = "${activeUser.role.label} • @${activeUser.username}",
                             style = MaterialTheme.typography.bodySmall,
                             color = Slate400
                         )
@@ -315,7 +324,7 @@ fun UsersScreen(
                     items(state.allUsers, key = { it.id }) { user ->
                         UserItemRow(
                             user = user,
-                            isCurrent = user.id == state.currentUser.id,
+                            isCurrent = user.id == activeUser.id,
                             onEdit = { viewModel.openEditUser(user) },
                             onDelete = { viewModel.deleteUser(user.id) }
                         )
@@ -439,10 +448,8 @@ fun UserItemRow(
                     IconButton(onClick = onEdit, modifier = Modifier.size(30.dp)) {
                         Icon(Icons.Default.Edit, "Editar", tint = Slate400, modifier = Modifier.size(16.dp))
                     }
-                    if (user.id != "user_admin_001") {
-                        IconButton(onClick = onDelete, modifier = Modifier.size(30.dp)) {
-                            Icon(Icons.Default.DeleteOutline, "Eliminar", tint = Red400, modifier = Modifier.size(16.dp))
-                        }
+                    IconButton(onClick = onDelete, modifier = Modifier.size(30.dp)) {
+                        Icon(Icons.Default.DeleteOutline, "Eliminar", tint = Red400, modifier = Modifier.size(16.dp))
                     }
                 }
             }

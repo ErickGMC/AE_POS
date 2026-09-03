@@ -4,10 +4,7 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.SetOptions
 import com.minimarket.aepos.data.local.AppDatabase
-import com.minimarket.aepos.data.local.entity.ProductEntity
-import com.minimarket.aepos.data.local.entity.SaleDetailEntity
-import com.minimarket.aepos.data.local.entity.SaleEntity
-import com.minimarket.aepos.data.local.entity.UserEntity
+import com.minimarket.aepos.data.local.entity.*
 import com.minimarket.aepos.domain.model.Product
 import com.minimarket.aepos.domain.model.User
 import com.minimarket.aepos.domain.model.UserRole
@@ -72,7 +69,7 @@ class FirestoreSyncService(
                         return@addSnapshotListener
                     }
 
-                    if (snapshot != null && !snapshot.isEmpty) {
+                    if (snapshot != null) {
                         scope.launch(Dispatchers.IO) {
                             try {
                                 val products = snapshot.documents.mapNotNull { doc ->
@@ -100,7 +97,7 @@ class FirestoreSyncService(
                                         mostrarPrecioWeb = if ((data["mostrarPrecioWeb"] as? Boolean) == true) 1 else 0
                                     )
                                 }
-                                db.productDao().insertAll(products)
+                                db.productDao().syncCatalog(products)
 
                                 val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
                                 _syncStatus.value = SyncStatus(
@@ -130,7 +127,7 @@ class FirestoreSyncService(
             usersListenerRegistration?.remove()
             usersListenerRegistration = firestore.collection("usuarios")
                 .addSnapshotListener { snapshot, error ->
-                    if (error == null && snapshot != null && !snapshot.isEmpty) {
+                    if (error == null && snapshot != null) {
                         scope.launch(Dispatchers.IO) {
                             try {
                                 val users = snapshot.documents.mapNotNull { doc ->
@@ -155,7 +152,9 @@ class FirestoreSyncService(
                                         activo = if ((data["activo"] as? Boolean) == false) 0 else 1
                                     )
                                 }
-                                db.userDao().insertAll(users)
+                                if (users.isNotEmpty()) {
+                                    db.userDao().syncUsers(users)
+                                }
                             } catch (e: Exception) {
                                 e.printStackTrace()
                             }
@@ -203,6 +202,51 @@ class FirestoreSyncService(
                                     )
                                 }
                                 db.saleDao().insertAllSales(sales)
+
+                                // Descargar detalles faltantes (ej. ventas generadas en PC o web)
+                                for (doc in snapshot.documents) {
+                                    val sId = doc.id
+                                    val existing = db.saleDao().getDetailsForSale(sId)
+                                    if (existing.isEmpty()) {
+                                        try {
+                                            val detSnap = firestore.collection("ventas").document(sId).collection("detalle").get().await()
+                                            val detList = mutableListOf<SaleDetailEntity>()
+                                            for (detDoc in detSnap.documents) {
+                                                val detData = detDoc.data ?: continue
+                                                if (detDoc.id == "items" && detData["items"] is List<*>) {
+                                                    @Suppress("UNCHECKED_CAST")
+                                                    val items = detData["items"] as List<Map<String, Any>>
+                                                    for (itm in items) {
+                                                        detList.add(
+                                                            SaleDetailEntity(
+                                                                id = (itm["id"] as? String) ?: UUID.randomUUID().toString(),
+                                                                venta_id = sId,
+                                                                producto_id = (itm["producto_id"] as? String) ?: (itm["productoId"] as? String) ?: "",
+                                                                cantidad = (itm["cantidad"] as? Number)?.toDouble() ?: 1.0,
+                                                                precio_unitario = (itm["precio_unitario"] as? Number)?.toDouble() ?: (itm["precioUnitario"] as? Number)?.toDouble() ?: 0.0,
+                                                                subtotal = (itm["subtotal"] as? Number)?.toDouble() ?: 0.0
+                                                            )
+                                                        )
+                                                    }
+                                                } else if (detData.containsKey("producto_id")) {
+                                                    detList.add(
+                                                        SaleDetailEntity(
+                                                            id = (detData["id"] as? String) ?: detDoc.id,
+                                                            venta_id = sId,
+                                                            producto_id = (detData["producto_id"] as? String) ?: "",
+                                                            cantidad = (detData["cantidad"] as? Number)?.toDouble() ?: 1.0,
+                                                            precio_unitario = (detData["precio_unitario"] as? Number)?.toDouble() ?: 0.0,
+                                                            subtotal = (detData["subtotal"] as? Number)?.toDouble() ?: 0.0
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                            if (detList.isNotEmpty()) {
+                                                db.saleDao().insertSaleDetails(detList)
+                                            }
+                                        } catch (_: Exception) {}
+                                    }
+                                }
                             } catch (e: Exception) {
                                 e.printStackTrace()
                             }
@@ -363,6 +407,19 @@ class FirestoreSyncService(
                 batch.update(prodRef, "stock", com.google.firebase.firestore.FieldValue.increment(-item.cantidad))
             }
 
+            // 2b. Formato dual compatible con Desktop POS (documento 'items' con array)
+            val itemsList = details.map { item ->
+                hashMapOf(
+                    "id" to item.id,
+                    "venta_id" to saleEntity.id,
+                    "producto_id" to item.producto_id,
+                    "cantidad" to item.cantidad,
+                    "precio_unitario" to item.precio_unitario,
+                    "subtotal" to item.subtotal
+                )
+            }
+            batch.set(saleDocRef.collection("detalle").document("items"), hashMapOf("items" to itemsList))
+
             // 3. Actualizar correlativo M001 en la nube
             val correlativeRef = firestore.collection("correlativos").document(saleEntity.serie)
             batch.set(
@@ -390,6 +447,91 @@ class FirestoreSyncService(
                 status = SyncStateStatus.OFFLINE,
                 message = "Venta registrada localmente. Pendiente de subida."
             )
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Sincroniza la anulación de una venta a Firestore y restituye el stock en la nube.
+     */
+    suspend fun cancelSale(saleId: String, details: List<SaleDetailEntity>): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val batch = firestore.batch()
+            val saleDocRef = firestore.collection("ventas").document(saleId)
+            batch.update(
+                saleDocRef,
+                mapOf(
+                    "anulado" to true,
+                    "estado" to "anulada",
+                    "actualizado_el" to Timestamp.now()
+                )
+            )
+
+            // Restituir stock en la nube
+            for (item in details) {
+                if (item.producto_id.isNotBlank()) {
+                    val prodRef = firestore.collection("productos").document(item.producto_id)
+                    batch.update(prodRef, "stock", com.google.firebase.firestore.FieldValue.increment(item.cantidad))
+                }
+            }
+
+            batch.commit().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Sube una apertura o cierre de turno de caja a Firestore.
+     */
+    suspend fun uploadShift(shift: CashShiftEntity): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val map = hashMapOf(
+                "id" to shift.id,
+                "fechaApertura" to shift.fechaApertura,
+                "fechaCierre" to (shift.fechaCierre ?: ""),
+                "montoInicial" to shift.montoInicial,
+                "totalVentasEfectivo" to shift.totalVentasEfectivo,
+                "totalIngresos" to shift.totalIngresos,
+                "totalEgresos" to shift.totalEgresos,
+                "montoEsperado" to shift.montoEsperado,
+                "montoFinalReal" to (shift.montoFinalReal ?: 0.0),
+                "diferencia" to (shift.diferencia ?: 0.0),
+                "cajero" to shift.cajero,
+                "estado" to shift.estado,
+                "observaciones" to (shift.observaciones ?: ""),
+                "actualizado_el" to Timestamp.now()
+            )
+            firestore.collection("caja_turnos").document(shift.id)
+                .set(map, SetOptions.merge())
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Sube un movimiento de caja (ingreso o egreso) a Firestore.
+     */
+    suspend fun uploadMovement(movement: CashMovementEntity): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val map = hashMapOf(
+                "id" to movement.id,
+                "turnoId" to movement.turnoId,
+                "tipo" to movement.tipo,
+                "monto" to movement.monto,
+                "motivo" to movement.motivo,
+                "fecha" to movement.fecha,
+                "creado_el" to Timestamp.now()
+            )
+            firestore.collection("caja_movimientos").document(movement.id)
+                .set(map, SetOptions.merge())
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }
@@ -427,9 +569,7 @@ class FirestoreSyncService(
                 )
             }
 
-            if (products.isNotEmpty()) {
-                db.productDao().insertAll(products)
-            }
+            db.productDao().syncCatalog(products)
 
             // Descargar usuarios desde la nube
             try {
@@ -457,7 +597,7 @@ class FirestoreSyncService(
                     )
                 }
                 if (users.isNotEmpty()) {
-                    db.userDao().insertAll(users)
+                    db.userDao().syncUsers(users)
                 }
             } catch (_: Exception) {}
 
