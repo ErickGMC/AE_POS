@@ -2,7 +2,6 @@ package com.minimarket.aepos.ui.shopping
 
 import android.content.Context
 import android.content.Intent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
@@ -19,7 +17,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -33,9 +30,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minimarket.aepos.data.repository.ProductRepository
 import com.minimarket.aepos.domain.model.Product
+import com.minimarket.aepos.ui.components.CategoryDropdownSelector
 import com.minimarket.aepos.ui.components.CategoryFilterRow
 import com.minimarket.aepos.ui.components.SearchBarField
-import com.minimarket.aepos.ui.theme.*
+import com.minimarket.aepos.ui.components.UnitDropdownSelector
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -185,13 +183,13 @@ fun ShoppingListScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = Slate950,
+        containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
                 FloatingActionButton(
                     onClick = { viewModel.openExternalDialog() },
-                    containerColor = Slate800,
-                    contentColor = Color.White,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier
                         .padding(bottom = 10.dp)
                         .size(46.dp),
@@ -201,8 +199,8 @@ fun ShoppingListScreen(
                 }
                 FloatingActionButton(
                     onClick = { viewModel.openInventoryPicker() },
-                    containerColor = Emerald500,
-                    contentColor = Color.White,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                     shape = CircleShape,
                     modifier = Modifier.shadow(8.dp, CircleShape)
                 ) {
@@ -217,7 +215,7 @@ fun ShoppingListScreen(
                 .padding(paddingValues)
                 .padding(14.dp)
         ) {
-            // Cabecera Pro
+            // Cabecera
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -227,20 +225,20 @@ fun ShoppingListScreen(
                     Text(
                         text = "Lista de Compras & Pedidos",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "${state.selectedItems.size} ítems listados para reposición",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Slate400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 if (state.selectedItems.isNotEmpty()) {
                     Button(
                         onClick = { shareShoppingList(context, state) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
-                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        shape = MaterialTheme.shapes.small,
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                     ) {
                         Icon(Icons.Default.Share, null, modifier = Modifier.size(16.dp))
@@ -254,9 +252,9 @@ fun ShoppingListScreen(
 
             // Configuración de la lista
             Card(
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = Slate900),
-                border = BorderStroke(1.dp, Slate800)
+                shape = MaterialTheme.shapes.small,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Row(
                     modifier = Modifier
@@ -266,7 +264,7 @@ fun ShoppingListScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     LabelSwitch("Cantidades", state.includeQuantity) { viewModel.toggleIncludeQuantity(it) }
-                    VerticalDivider(modifier = Modifier.height(20.dp), color = Slate700)
+                    VerticalDivider(modifier = Modifier.height(20.dp), color = MaterialTheme.colorScheme.outlineVariant)
                     LabelSwitch("Precios Estimados", state.includePrice) { viewModel.toggleIncludePrice(it) }
                 }
             }
@@ -285,14 +283,14 @@ fun ShoppingListScreen(
                     groupedItems.forEach { (category, items) ->
                         item {
                             Surface(
-                                color = Slate850,
-                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                shape = MaterialTheme.shapes.extraSmall,
                                 modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
                             ) {
                                 Text(
                                     text = "${category.uppercase()} (${items.size})",
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = Emerald400,
+                                    color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                                 )
                             }
@@ -324,6 +322,7 @@ fun ShoppingListScreen(
     // Diálogo Producto Externo
     if (state.isExternalDialogOpen) {
         ExternalProductDialog(
+            availableCategories = state.categories,
             onDismiss = { viewModel.closeExternalDialog() },
             onAdd = { name, cat, qty, price, unit -> 
                 viewModel.addExternalItem(name, cat, qty, price, unit) 
@@ -335,12 +334,12 @@ fun ShoppingListScreen(
 @Composable
 fun LabelSwitch(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodySmall, color = Slate300, fontWeight = FontWeight.Medium)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium)
         Spacer(modifier = Modifier.width(6.dp))
         Switch(
             checked = checked, 
             onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(checkedThumbColor = Emerald500, checkedTrackColor = Emerald900)
+            colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary, checkedTrackColor = MaterialTheme.colorScheme.primaryContainer)
         )
     }
 }
@@ -352,9 +351,9 @@ fun SelectedItemRow(
     onQtyChange: (Double) -> Unit
 ) {
     Card(
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Slate900),
-        border = BorderStroke(1.dp, Slate800)
+        shape = MaterialTheme.shapes.small,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier
@@ -366,23 +365,23 @@ fun SelectedItemRow(
                 Text(
                     text = item.name,
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 if (!item.isFromInventory) {
                     Surface(
-                        color = Amber900.copy(alpha = 0.3f),
-                        shape = RoundedCornerShape(4.dp),
-                        border = BorderStroke(1.dp, Amber500.copy(alpha = 0.4f)),
+                        color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f),
+                        shape = MaterialTheme.shapes.extraSmall,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f)),
                         modifier = Modifier.padding(top = 2.dp)
                     ) {
                         Text(
                             "EXTERNO",
                             modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
-                            fontSize = 8.sp,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
                             fontWeight = FontWeight.Bold,
-                            color = Amber400
+                            color = MaterialTheme.colorScheme.tertiary
                         )
                     }
                 }
@@ -393,35 +392,35 @@ fun SelectedItemRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier
-                    .background(Slate800, RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.extraLarge)
                     .padding(horizontal = 4.dp, vertical = 2.dp)
             ) {
                 IconButton(
                     onClick = { if (item.quantity > 1) onQtyChange(item.quantity - 1) },
                     modifier = Modifier.size(26.dp)
                 ) {
-                    Icon(Icons.Default.Remove, null, tint = Slate300, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.Remove, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
                 }
                 Text(
                     text = "${item.quantity.toInt()} ${item.unit}",
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(horizontal = 4.dp)
                 )
                 IconButton(
                     onClick = { onQtyChange(item.quantity + 1) },
                     modifier = Modifier
                         .size(26.dp)
-                        .background(Emerald500, CircleShape)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
                 ) {
-                    Icon(Icons.Default.Add, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(14.dp))
                 }
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
             IconButton(onClick = onRemove, modifier = Modifier.size(30.dp)) {
-                Icon(Icons.Default.DeleteOutline, null, tint = Red400, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -437,9 +436,9 @@ fun InventoryPickerDialog(
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Slate900),
-            border = BorderStroke(1.dp, Slate700),
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.85f)
@@ -453,10 +452,10 @@ fun InventoryPickerDialog(
                     Text(
                         "Seleccionar de Inventario",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     IconButton(onClick = onDismiss, modifier = Modifier.size(30.dp)) {
-                        Icon(Icons.Default.Close, null, tint = Slate400)
+                        Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
@@ -481,9 +480,9 @@ fun InventoryPickerDialog(
                     items(state.inventoryProducts) { prod ->
                         val alreadyInList = state.selectedItems.any { it.productId == prod.id }
                         Surface(
-                            color = if (alreadyInList) Slate850.copy(alpha = 0.5f) else Slate850,
-                            shape = RoundedCornerShape(12.dp),
-                            border = BorderStroke(1.dp, if (alreadyInList) Emerald500.copy(alpha = 0.3f) else Slate750),
+                            color = if (alreadyInList) MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainer,
+                            shape = MaterialTheme.shapes.small,
+                            border = BorderStroke(1.dp, if (alreadyInList) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else MaterialTheme.colorScheme.outlineVariant),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 3.dp)
@@ -500,12 +499,12 @@ fun InventoryPickerDialog(
                                     Text(
                                         text = prod.nombre,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (alreadyInList) Slate400 else Color.White
+                                        color = if (alreadyInList) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
                                         text = "Stock: ${prod.stock.toInt()} ${prod.unidadMedida} • S/ %.2f".format(prod.precio),
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Emerald400
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
 
@@ -517,7 +516,7 @@ fun InventoryPickerDialog(
                                     Icon(
                                         if (alreadyInList) Icons.Default.CheckCircle else Icons.Default.AddCircle,
                                         contentDescription = null,
-                                        tint = if (alreadyInList) Emerald400 else Slate400
+                                        tint = if (alreadyInList) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -531,38 +530,39 @@ fun InventoryPickerDialog(
 
 @Composable
 fun ExternalProductDialog(
+    availableCategories: List<String> = emptyList(),
     onDismiss: () -> Unit,
     onAdd: (String, String, Double, Double?, String) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("Varios") }
+    var category by remember { mutableStateOf("Abarrotes") }
     var qtyStr by remember { mutableStateOf("1") }
     var priceStr by remember { mutableStateOf("") }
     var unit by remember { mutableStateOf("UND") }
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = Emerald500,
-        unfocusedBorderColor = Slate700,
-        focusedContainerColor = Slate850,
-        unfocusedContainerColor = Slate850,
-        focusedTextColor = Color.White,
-        unfocusedTextColor = Color.White,
-        focusedLabelColor = Emerald400,
-        unfocusedLabelColor = Slate400
+        focusedBorderColor = MaterialTheme.colorScheme.primary,
+        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+        focusedLabelColor = MaterialTheme.colorScheme.primary,
+        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
     )
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Slate900),
-            border = BorderStroke(1.dp, Slate700),
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier.fillMaxWidth().padding(12.dp)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Text(
                     "Producto No Registrado",
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(14.dp))
                 
@@ -570,7 +570,7 @@ fun ExternalProductDialog(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Nombre del Producto *") },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = MaterialTheme.shapes.small,
                     colors = textFieldColors,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -583,30 +583,23 @@ fun ExternalProductDialog(
                         onValueChange = { qtyStr = it },
                         label = { Text("Cant.") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = MaterialTheme.shapes.small,
                         colors = textFieldColors,
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
-                    OutlinedTextField(
-                        value = unit,
-                        onValueChange = { unit = it },
-                        label = { Text("Unidad") },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = textFieldColors,
-                        singleLine = true,
+                    UnitDropdownSelector(
+                        selectedUnit = unit,
+                        onUnitSelected = { unit = it },
                         modifier = Modifier.weight(1f)
                     )
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                OutlinedTextField(
-                    value = category,
-                    onValueChange = { category = it },
-                    label = { Text("Categoría") },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = textFieldColors,
-                    singleLine = true,
+                CategoryDropdownSelector(
+                    selectedCategory = category,
+                    onCategorySelected = { category = it },
+                    availableCategories = availableCategories,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -616,7 +609,7 @@ fun ExternalProductDialog(
                     onValueChange = { priceStr = it },
                     label = { Text("Precio Sugerido (Opcional)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = MaterialTheme.shapes.small,
                     colors = textFieldColors,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -627,20 +620,20 @@ fun ExternalProductDialog(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedButton(
                         onClick = onDismiss,
-                        border = BorderStroke(1.dp, Slate700),
-                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                        shape = MaterialTheme.shapes.small,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Cancelar", color = Slate300)
+                        Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Button(
                         onClick = { onAdd(name, category, qtyStr.toDoubleOrNull() ?: 1.0, priceStr.toDoubleOrNull(), unit) },
                         enabled = name.isNotBlank(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Emerald500,
-                            disabledContainerColor = Slate800
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                         ),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = MaterialTheme.shapes.small,
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Añadir", fontWeight = FontWeight.Bold)
@@ -655,11 +648,11 @@ fun ExternalProductDialog(
 fun EmptyShoppingListState() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, null, modifier = Modifier.size(64.dp), tint = Slate600)
+            Icon(Icons.AutoMirrored.Filled.PlaylistAdd, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
             Spacer(modifier = Modifier.height(12.dp))
-            Text("Tu lista está vacía", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.White)
+            Text("Tu lista está vacía", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.height(4.dp))
-            Text("Usa los botones flotantes para añadir productos", style = MaterialTheme.typography.bodySmall, color = Slate400)
+            Text("Usa los botones flotantes para añadir productos", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -712,4 +705,3 @@ private fun shareShoppingList(context: Context, state: ShoppingUiState) {
     }
     context.startActivity(Intent.createChooser(intent, "Enviar Pedido por WhatsApp"))
 }
-

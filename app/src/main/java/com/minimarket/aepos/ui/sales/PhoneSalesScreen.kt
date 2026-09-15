@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.*
@@ -25,14 +24,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.minimarket.aepos.ui.components.*
 import com.minimarket.aepos.ui.scanner.BarcodeScannerModal
-import com.minimarket.aepos.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +41,7 @@ fun PhoneSalesScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = Slate950,
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             AnimatedVisibility(
                 visible = state.cart.isNotEmpty(),
@@ -53,10 +49,10 @@ fun PhoneSalesScreen(
                 exit = slideOutVertically { it } + fadeOut()
             ) {
                 Surface(
-                    color = Slate900,
+                    color = MaterialTheme.colorScheme.surface,
                     shadowElevation = 16.dp,
-                    shape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
-                    border = BorderStroke(1.dp, Slate800),
+                    shape = MaterialTheme.shapes.large,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -70,20 +66,20 @@ fun PhoneSalesScreen(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(MaterialTheme.shapes.small)
                                 .clickable { isCartSheetOpen = true }
                                 .padding(vertical = 4.dp, horizontal = 6.dp)
                         ) {
                             Box(
                                 modifier = Modifier
                                     .size(42.dp)
-                                    .background(Emerald500.copy(alpha = 0.15f), CircleShape),
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.ShoppingCart,
                                     contentDescription = null,
-                                    tint = Emerald400,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(22.dp)
                                 )
                             }
@@ -92,7 +88,7 @@ fun PhoneSalesScreen(
                                 Text(
                                     text = "${state.totalItemsCount.toInt()} items (Ver detalle)",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Slate400
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     text = "S/ %.2f".format(state.total),
@@ -100,7 +96,7 @@ fun PhoneSalesScreen(
                                         fontWeight = FontWeight.Black,
                                         fontSize = 20.sp
                                     ),
-                                    color = Emerald400
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
@@ -112,26 +108,26 @@ fun PhoneSalesScreen(
                         ) {
                             OutlinedButton(
                                 onClick = { viewModel.openPagosMixtos() },
-                                shape = RoundedCornerShape(12.dp),
-                                border = BorderStroke(1.dp, Emerald500.copy(alpha = 0.5f)),
+                                shape = MaterialTheme.shapes.small,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)),
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.CallSplit,
                                     contentDescription = null,
-                                    tint = Emerald400,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Mixto", color = Emerald400, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("Mixto", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                             }
 
                             Button(
                                 onClick = { viewModel.openCheckout() },
-                                colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
-                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                shape = MaterialTheme.shapes.small,
                                 contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
-                                modifier = Modifier.shadow(6.dp, RoundedCornerShape(14.dp))
+                                modifier = Modifier.shadow(6.dp, MaterialTheme.shapes.small)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Check,
@@ -183,19 +179,19 @@ fun PhoneSalesScreen(
                         Icon(
                             imageVector = Icons.Default.SearchOff,
                             contentDescription = null,
-                            tint = Slate600,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                             modifier = Modifier.size(56.dp)
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = "No se encontraron productos",
                             style = MaterialTheme.typography.titleMedium,
-                            color = Slate300
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "Intenta buscar con otro término o categoría",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Slate500
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -218,12 +214,12 @@ fun PhoneSalesScreen(
         }
     }
 
-    // Modal Bottom Sheet: Detalle Rápido del Carrito
+    // Modal Bottom Sheet: Detalle Rápido del Carrito Material 3
     if (isCartSheetOpen) {
         ModalBottomSheet(
             onDismissRequest = { isCartSheetOpen = false },
-            containerColor = Slate900,
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            shape = MaterialTheme.shapes.large
         ) {
             Column(
                 modifier = Modifier
@@ -239,12 +235,12 @@ fun PhoneSalesScreen(
                     Text(
                         text = "Carrito de Compras",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     TextButton(onClick = { viewModel.clearCart(); isCartSheetOpen = false }) {
-                        Icon(Icons.Default.DeleteSweep, null, tint = Red400, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.DeleteSweep, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Vaciar", color = Red400, fontSize = 12.sp)
+                        Text("Vaciar", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge)
                     }
                 }
 
@@ -261,7 +257,8 @@ fun PhoneSalesScreen(
                             item = item,
                             onIncrement = { viewModel.addToCart(item.product) },
                             onDecrement = { viewModel.decrementCartItem(item.product.id) },
-                            onRemove = { viewModel.removeFromCart(item.product.id) }
+                            onRemove = { viewModel.removeFromCart(item.product.id) },
+                            onWeightClick = { viewModel.openWeightDialog(item.product, item.cantidad) }
                         )
                     }
                 }
@@ -269,9 +266,9 @@ fun PhoneSalesScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Surface(
-                    color = Slate850,
-                    shape = RoundedCornerShape(14.dp),
-                    border = BorderStroke(1.dp, Slate700),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    shape = MaterialTheme.shapes.small,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -284,13 +281,13 @@ fun PhoneSalesScreen(
                         Text(
                             text = "TOTAL:",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "S/ %.2f".format(state.total),
                             style = MaterialTheme.typography.headlineSmall.copy(
                                 fontWeight = FontWeight.Black,
-                                color = Emerald400
+                                color = MaterialTheme.colorScheme.primary
                             )
                         )
                     }
@@ -303,8 +300,8 @@ fun PhoneSalesScreen(
                         isCartSheetOpen = false
                         viewModel.openCheckout()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
-                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = MaterialTheme.shapes.small,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp)
@@ -362,13 +359,22 @@ fun PhoneSalesScreen(
             modifier = Modifier.padding(16.dp),
             action = {
                 TextButton(onClick = { viewModel.dismissError() }) {
-                    Text("OK", color = Color.White)
+                    Text("OK", color = MaterialTheme.colorScheme.onError)
                 }
             },
-            containerColor = Red500
+            containerColor = MaterialTheme.colorScheme.error
         ) {
-            Text(text = error, color = Color.White)
+            Text(text = error, color = MaterialTheme.colorScheme.onError)
         }
     }
-}
 
+    // Modal de Pesaje a Granel
+    state.weightDialogProduct?.let { product ->
+        WeightInputDialog(
+            product = product,
+            initialWeight = state.initialWeightForDialog,
+            onConfirm = { weight -> viewModel.addWeightItemToCart(product, weight) },
+            onDismiss = { viewModel.closeWeightDialog() }
+        )
+    }
+}

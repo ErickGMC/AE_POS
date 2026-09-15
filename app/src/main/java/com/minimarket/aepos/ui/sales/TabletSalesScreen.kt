@@ -190,7 +190,8 @@ fun TabletSalesScreen(
                                 item = item,
                                 onIncrement = { viewModel.addToCart(item.product) },
                                 onDecrement = { viewModel.decrementCartItem(item.product.id) },
-                                onRemove = { viewModel.removeFromCart(item.product.id) }
+                                onRemove = { viewModel.removeFromCart(item.product.id) },
+                                onWeightClick = { viewModel.openWeightDialog(item.product, item.cantidad) }
                             )
                         }
                     }
@@ -393,6 +394,16 @@ fun TabletSalesScreen(
         SaleSuccessDialog(
             comprobante = comprobante,
             onDismiss = { viewModel.dismissSuccessDialog() }
+        )
+    }
+
+    // Modal de Pesaje a Granel
+    state.weightDialogProduct?.let { product ->
+        WeightInputDialog(
+            product = product,
+            initialWeight = state.initialWeightForDialog,
+            onConfirm = { weight -> viewModel.addWeightItemToCart(product, weight) },
+            onDismiss = { viewModel.closeWeightDialog() }
         )
     }
 }

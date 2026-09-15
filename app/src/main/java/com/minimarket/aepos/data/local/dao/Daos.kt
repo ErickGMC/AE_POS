@@ -149,6 +149,15 @@ interface SaleDao {
 
     @Query("UPDATE ventas SET anulado = 1 WHERE id = :saleId")
     suspend fun cancelSale(saleId: String)
+
+    @Query("SELECT * FROM ventas WHERE sincronizado = 0 ORDER BY fecha ASC")
+    suspend fun getPendingSyncSales(): List<SaleEntity>
+
+    @Query("UPDATE ventas SET sincronizado = 1 WHERE id = :saleId")
+    suspend fun markSaleAsSynced(saleId: String)
+
+    @Query("SELECT COUNT(*) FROM ventas WHERE sincronizado = 0")
+    fun getPendingSalesCountFlow(): Flow<Int>
 }
 
 @Dao

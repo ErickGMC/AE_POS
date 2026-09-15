@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.*
@@ -25,16 +24,18 @@ import com.minimarket.aepos.data.repository.SaleRepository
 import com.minimarket.aepos.domain.model.PaymentMethod
 import com.minimarket.aepos.domain.model.Sale
 import com.minimarket.aepos.domain.model.User
-import com.minimarket.aepos.ui.theme.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 data class ReportsUiState(
     val sales: List<Sale> = emptyList(),
     val selectedSale: Sale? = null,
+    val selectedDate: String = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()),
     val totalRevenue: Double = 0.0,
     val cashTotal: Double = 0.0,
     val digitalTotal: Double = 0.0,
@@ -53,8 +54,9 @@ class ReportsViewModel(
     }
 
     private fun observeSales() {
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
         viewModelScope.launch {
-            saleRepository.allSalesFlow.collect { list ->
+            saleRepository.getSalesByDateFlow(today).collect { list ->
                 val activeSales = list.filterNot { it.anulado }
                 val totalRev = activeSales.sumOf { it.total }
                 val cash = activeSales.filter { it.metodoPago == PaymentMethod.EFECTIVO }.sumOf { it.total }
@@ -102,23 +104,23 @@ fun ReportsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Slate950)
+            .background(MaterialTheme.colorScheme.background)
             .padding(14.dp)
     ) {
         Text(
             text = "Historial & Reportes",
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
         Text(
             text = "${state.totalTickets} ventas concretadas hoy",
             style = MaterialTheme.typography.bodySmall,
-            color = Slate400
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Tarjetas de Métricas Resumen
+        // Tarjetas de Métricas Resumen Material 3
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -127,21 +129,21 @@ fun ReportsScreen(
                 title = "Total Vendido",
                 value = "S/ %.2f".format(state.totalRevenue),
                 icon = Icons.Default.Paid,
-                accentColor = Emerald400,
+                accentColor = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
             MetricCard(
                 title = "Efectivo",
                 value = "S/ %.2f".format(state.cashTotal),
                 icon = Icons.Default.AttachMoney,
-                accentColor = Teal400,
+                accentColor = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier.weight(1f)
             )
             MetricCard(
                 title = "Digital (Yape)",
                 value = "S/ %.2f".format(state.digitalTotal),
                 icon = Icons.Default.QrCode2,
-                accentColor = Purple400,
+                accentColor = MaterialTheme.colorScheme.tertiary,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -151,7 +153,7 @@ fun ReportsScreen(
         Text(
             text = "Tickets Emitidos (${state.sales.size})",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -167,14 +169,14 @@ fun ReportsScreen(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ReceiptLong,
                         contentDescription = null,
-                        tint = Slate600,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(56.dp)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = "Aún no hay ventas emitidas",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Slate400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -214,9 +216,9 @@ fun MetricCard(
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Slate900),
-        border = BorderStroke(1.dp, Slate800)
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Icon(imageVector = icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(20.dp))
@@ -224,7 +226,7 @@ fun MetricCard(
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                color = Slate400
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
@@ -233,7 +235,7 @@ fun MetricCard(
                     fontWeight = FontWeight.Black,
                     fontSize = 15.sp
                 ),
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }
@@ -245,12 +247,12 @@ fun SaleHistoryCard(
     onClick: () -> Unit
 ) {
     Card(
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Slate900),
-        border = BorderStroke(1.dp, Slate800),
+        shape = MaterialTheme.shapes.small,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(MaterialTheme.shapes.small)
             .clickable { onClick() }
     ) {
         Row(
@@ -265,13 +267,13 @@ fun SaleHistoryCard(
                     Text(
                         text = sale.numeroComprobante,
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = if (sale.anulado) Red900.copy(alpha = 0.3f) else Emerald700.copy(alpha = 0.2f),
-                        border = BorderStroke(1.dp, if (sale.anulado) Red500.copy(alpha = 0.4f) else Emerald500.copy(alpha = 0.4f))
+                        shape = MaterialTheme.shapes.extraSmall,
+                        color = if (sale.anulado) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f) else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                        border = BorderStroke(1.dp, if (sale.anulado) MaterialTheme.colorScheme.error.copy(alpha = 0.4f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
                     ) {
                         Text(
                             text = if (sale.anulado) "ANULADO" else sale.metodoPago.label,
@@ -279,7 +281,7 @@ fun SaleHistoryCard(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 9.sp
                             ),
-                            color = if (sale.anulado) Red400 else Emerald300,
+                            color = if (sale.anulado) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -288,7 +290,7 @@ fun SaleHistoryCard(
                 Text(
                     text = "${sale.fecha} • ${sale.clienteNombre ?: "Público General"}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Slate400
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -299,17 +301,16 @@ fun SaleHistoryCard(
                         fontWeight = FontWeight.Black,
                         fontSize = 17.sp
                     ),
-                    color = if (sale.anulado) Slate500 else Emerald400
+                    color = if (sale.anulado) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = null,
-                    tint = Slate500,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
                 )
             }
         }
     }
 }
-

@@ -9,6 +9,7 @@ import com.minimarket.aepos.data.repository.StockFilterOption
 import com.minimarket.aepos.domain.model.Product
 import com.minimarket.aepos.utils.ImageOptimizer
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -49,11 +50,13 @@ class InventoryViewModel(
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
+    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     private fun observeProducts() {
         viewModelScope.launch {
             combine(
-                _uiState.map { it.searchQuery }.distinctUntilChanged(),
+                _uiState.map { it.searchQuery }.distinctUntilChanged().debounce { q ->
+                    if (q.isBlank()) 0L else 250L
+                },
                 _uiState.map { it.selectedCategory }.distinctUntilChanged(),
                 _uiState.map { it.selectedStockFilter }.distinctUntilChanged()
             ) { query, category, stockFilter ->

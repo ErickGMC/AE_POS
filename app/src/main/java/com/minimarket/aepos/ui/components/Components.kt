@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -26,7 +25,6 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.minimarket.aepos.domain.model.CartItem
 import com.minimarket.aepos.domain.model.Product
-import com.minimarket.aepos.ui.theme.*
 
 @Composable
 fun ProductCard(
@@ -37,13 +35,13 @@ fun ProductCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(MaterialTheme.shapes.medium)
             .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
-            containerColor = Slate900
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        border = BorderStroke(1.dp, Slate800),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
@@ -54,7 +52,7 @@ fun ProductCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(115.dp)
-                    .background(Slate850)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             ) {
                 val imageSource = product.imagenLocal ?: product.imagenUrl
                 if (!imageSource.isNullOrBlank()) {
@@ -72,7 +70,7 @@ fun ProductCard(
                         Icon(
                             imageVector = Icons.Default.Inventory2,
                             contentDescription = null,
-                            tint = Slate600,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                             modifier = Modifier.size(36.dp)
                         )
                     }
@@ -86,39 +84,39 @@ fun ProductCard(
                         .align(Alignment.BottomCenter)
                         .background(
                             Brush.verticalGradient(
-                                listOf(Color.Transparent, Slate900.copy(alpha = 0.8f))
+                                listOf(Color.Transparent, MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.85f))
                             )
                         )
                 )
 
                 // Categoría badge (Top Left)
                 Surface(
-                    shape = RoundedCornerShape(bottomEnd = 8.dp),
-                    color = Slate950.copy(alpha = 0.85f),
+                    shape = MaterialTheme.shapes.extraSmall,
+                    color = MaterialTheme.colorScheme.surfaceContainerLowest.copy(alpha = 0.85f),
                     modifier = Modifier.align(Alignment.TopStart)
                 ) {
                     Text(
                         text = product.categoria,
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                        color = Slate300,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                     )
                 }
 
                 // Stock indicator badge (Top Right)
                 val (stockColor, stockBg) = when {
-                    product.stock <= 0.0 -> Pair(Red400, Red900.copy(alpha = 0.85f))
-                    product.stock <= 10.0 -> Pair(Amber400, Amber900.copy(alpha = 0.85f))
-                    else -> Pair(Emerald300, Emerald700.copy(alpha = 0.85f))
+                    product.stock <= 0.0 -> Pair(MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.85f))
+                    product.stock <= 10.0 -> Pair(MaterialTheme.colorScheme.tertiary, MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f))
+                    else -> Pair(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f))
                 }
 
                 Surface(
-                    shape = RoundedCornerShape(bottomStart = 8.dp),
+                    shape = MaterialTheme.shapes.extraSmall,
                     color = stockBg,
                     modifier = Modifier.align(Alignment.TopEnd)
                 ) {
                     Text(
-                        text = "${product.stock.toInt()} ${product.unidadMedida}",
+                        text = if (product.isWeightUnit) "%.3f %s".format(product.stock, product.unidadMedida) else "${product.stock.toInt()} ${product.unidadMedida}",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Bold,
                             fontSize = 9.sp
@@ -138,7 +136,7 @@ fun ProductCard(
                 Text(
                     text = product.nombre,
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.heightIn(min = 34.dp)
@@ -154,26 +152,26 @@ fun ProductCard(
                 ) {
                     Column {
                         Text(
-                            text = "PRECIO",
+                            text = if (product.isWeightUnit) "PRECIO / KG" else "PRECIO",
                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.sp),
-                            color = Slate400,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = "S/ %.2f".format(product.precio),
+                            text = "S/ %.2f".format(product.precio) + if (product.isWeightUnit) " /kg" else "",
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Black,
                                 fontSize = 16.sp
                             ),
-                            color = Emerald400
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
 
                     FilledIconButton(
                         onClick = onClick,
                         colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = Emerald500,
-                            contentColor = Color.White
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ),
                         modifier = Modifier
                             .size(34.dp)
@@ -205,21 +203,31 @@ fun CategoryFilterRow(
     ) {
         items(categories) { cat ->
             val isSelected = cat == selectedCategory
-            Surface(
+            FilterChip(
+                selected = isSelected,
                 onClick = { onCategorySelected(cat) },
-                shape = RoundedCornerShape(12.dp),
-                color = if (isSelected) Emerald500 else Slate850,
-                border = if (isSelected) null else BorderStroke(1.dp, Slate700.copy(alpha = 0.5f))
-            ) {
-                Text(
-                    text = cat,
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                    ),
-                    color = if (isSelected) Color.White else Slate300,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
-                )
-            }
+                label = {
+                    Text(
+                        text = cat,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                        )
+                    )
+                },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = isSelected,
+                    borderColor = MaterialTheme.colorScheme.outlineVariant,
+                    selectedBorderColor = MaterialTheme.colorScheme.primary
+                ),
+                shape = MaterialTheme.shapes.small
+            )
         }
     }
 }
@@ -230,15 +238,16 @@ fun CartItemRow(
     onIncrement: () -> Unit,
     onDecrement: () -> Unit,
     onRemove: () -> Unit,
+    onWeightClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Slate900),
-        border = BorderStroke(1.dp, Slate800)
+        shape = MaterialTheme.shapes.small,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(
             modifier = Modifier
@@ -251,14 +260,14 @@ fun CartItemRow(
                 Text(
                     text = item.product.nombre,
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = "S/ %.2f c/u".format(item.precioUnitario),
+                    text = "S/ %.2f c/u".format(item.precioUnitario) + if (item.product.isWeightUnit) " /kg" else "",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Slate400
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -269,7 +278,7 @@ fun CartItemRow(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier
-                    .background(Slate800, RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.extraLarge)
                     .padding(horizontal = 4.dp, vertical = 2.dp)
             ) {
                 IconButton(
@@ -277,30 +286,32 @@ fun CartItemRow(
                     modifier = Modifier.size(26.dp)
                 ) {
                     Icon(
-                        imageVector = if (item.cantidad <= 1) Icons.Default.Delete else Icons.Default.Remove,
+                        imageVector = if (item.cantidad <= (if (item.product.isWeightUnit) 0.100 else 1.0)) Icons.Default.Delete else Icons.Default.Remove,
                         contentDescription = "Disminuir",
-                        tint = if (item.cantidad <= 1) Red400 else Slate300,
+                        tint = if (item.cantidad <= (if (item.product.isWeightUnit) 0.100 else 1.0)) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(15.dp)
                     )
                 }
 
                 Text(
-                    text = if (item.cantidad % 1.0 == 0.0) "${item.cantidad.toInt()}" else "%.2f".format(item.cantidad),
+                    text = if (item.product.isWeightUnit) "%.3f kg".format(item.cantidad) else (if (item.cantidad % 1.0 == 0.0) "${item.cantidad.toInt()}" else "%.2f".format(item.cantidad)),
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Black),
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 4.dp)
+                    color = if (item.product.isWeightUnit) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier
+                        .then(if (onWeightClick != null && item.product.isWeightUnit) Modifier.clickable { onWeightClick() } else Modifier)
+                        .padding(horizontal = 4.dp)
                 )
 
                 IconButton(
                     onClick = onIncrement,
                     modifier = Modifier
                         .size(26.dp)
-                        .background(Emerald500, CircleShape)
+                        .background(MaterialTheme.colorScheme.primary, CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
                         contentDescription = "Aumentar",
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(15.dp)
                     )
                 }
@@ -313,7 +324,7 @@ fun CartItemRow(
                 text = "S/ %.2f".format(item.subtotal),
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Black,
-                    color = Emerald400
+                    color = MaterialTheme.colorScheme.primary
                 ),
                 modifier = Modifier.widthIn(min = 60.dp)
             )
@@ -335,14 +346,14 @@ fun SearchBarField(
             Text(
                 text = "Buscar producto o escanear...",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Slate500
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
         leadingIcon = {
             Icon(
                 imageVector = Icons.Default.Search,
                 contentDescription = "Buscar",
-                tint = Emerald400,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
         },
@@ -356,7 +367,7 @@ fun SearchBarField(
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Limpiar",
-                            tint = Slate400,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -366,28 +377,27 @@ fun SearchBarField(
                     modifier = Modifier
                         .padding(end = 4.dp)
                         .size(36.dp)
-                        .background(Emerald500.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f), MaterialTheme.shapes.extraSmall)
                 ) {
                     Icon(
                         imageVector = Icons.Default.QrCodeScanner,
                         contentDescription = "Escanear",
-                        tint = Emerald400,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                 }
             }
         },
-        shape = RoundedCornerShape(14.dp),
+        shape = MaterialTheme.shapes.small,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Emerald500,
-            unfocusedBorderColor = Slate700,
-            focusedContainerColor = Slate850,
-            unfocusedContainerColor = Slate850,
-            focusedTextColor = Color.White,
-            unfocusedTextColor = Color.White
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
         ),
         singleLine = true,
         modifier = modifier.fillMaxWidth()
     )
 }
-

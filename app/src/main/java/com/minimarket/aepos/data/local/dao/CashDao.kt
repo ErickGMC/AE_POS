@@ -42,4 +42,16 @@ interface CashDao {
 
     @Query("UPDATE cajas_turnos SET totalEgresos = totalEgresos + :amount WHERE id = :shiftId")
     suspend fun addExpense(shiftId: String, amount: Double)
+
+    @Query("SELECT * FROM cajas_turnos WHERE sincronizado = 0")
+    suspend fun getPendingSyncShifts(): List<CashShiftEntity>
+
+    @Query("UPDATE cajas_turnos SET sincronizado = 1 WHERE id = :shiftId")
+    suspend fun markShiftAsSynced(shiftId: String)
+
+    @Query("SELECT * FROM cajas_movimientos WHERE sincronizado = 0")
+    suspend fun getPendingSyncMovements(): List<CashMovementEntity>
+
+    @Query("UPDATE cajas_movimientos SET sincronizado = 1 WHERE id = :movementId")
+    suspend fun markMovementAsSynced(movementId: String)
 }

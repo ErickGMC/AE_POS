@@ -40,22 +40,27 @@ class ProductRepository(
         category: String = "Todos",
         stockFilter: StockFilterOption = StockFilterOption.ALL
     ): Flow<List<Product>> {
-        return productDao.getAllProductsFlow().map { list ->
-            list.map { it.toDomain() }.filter { prod ->
-                val matchesQuery = query.isBlank() ||
-                        prod.nombre.contains(query, ignoreCase = true) ||
-                        (prod.codigoBarras != null && prod.codigoBarras.contains(query, ignoreCase = true))
+        val baseFlow = when {
+            query.isNotBlank() -> productDao.searchProductsFlow(query.trim())
+            category != "Todos" && category.isNotBlank() -> productDao.getProductsByCategoryFlow(category)
+            else -> productDao.getAllActiveProductsFlow()
+        }
 
-                val matchesCat = category == "Todos" || category.isBlank() || prod.categoria.equals(category, ignoreCase = true)
-
-                val matchesStock = when (stockFilter) {
-                    StockFilterOption.ALL -> true
-                    StockFilterOption.IN_STOCK -> prod.stock > 10.0
-                    StockFilterOption.LOW_STOCK -> prod.stock in 0.01..10.0
-                    StockFilterOption.OUT_OF_STOCK -> prod.stock <= 0.0
+        return baseFlow.map { list ->
+            val mapped = list.map { it.toDomain() }
+            if (stockFilter == StockFilterOption.ALL && (query.isNotBlank() || category == "Todos" || category.isBlank())) {
+                mapped
+            } else {
+                mapped.filter { prod ->
+                    val matchesCat = category == "Todos" || category.isBlank() || prod.categoria.equals(category, ignoreCase = true)
+                    val matchesStock = when (stockFilter) {
+                        StockFilterOption.ALL -> true
+                        StockFilterOption.IN_STOCK -> prod.stock > 10.0
+                        StockFilterOption.LOW_STOCK -> prod.stock in 0.01..10.0
+                        StockFilterOption.OUT_OF_STOCK -> prod.stock <= 0.0
+                    }
+                    matchesCat && matchesStock
                 }
-
-                matchesQuery && matchesCat && matchesStock
             }
         }
     }
@@ -185,11 +190,15 @@ class CashRepository(
                 fechaApertura = dateFormat.format(Date()),
                 montoInicial = montoInicial,
                 cajero = cajero.ifBlank { "Cajero" },
-                estado = "abierta"
+                estado = "abierta",
+                sincronizado = 0
             )
             cashDao.insertOrUpdateShift(shift)
             scope.launch(Dispatchers.IO) {
-                syncService.uploadShift(shift)
+                val res = syncService.uploadShift(shift)
+                if (res.isSuccess) {
+                    cashDao.markShiftAsSynced(shift.id)
+                }
             }
             Result.success(Unit)
         } catch (e: Exception) {
@@ -208,11 +217,15 @@ class CashRepository(
                 montoFinalReal = montoFinalReal,
                 diferencia = diferencia,
                 estado = "cerrada",
-                observaciones = observaciones
+                observaciones = observaciones,
+                sincronizado = 0
             )
             cashDao.insertOrUpdateShift(closedShift)
             scope.launch(Dispatchers.IO) {
-                syncService.uploadShift(closedShift)
+                val res = syncService.uploadShift(closedShift)
+                if (res.isSuccess) {
+                    cashDao.markShiftAsSynced(closedShift.id)
+                }
             }
             Result.success(Unit)
         } catch (e: Exception) {
@@ -229,7 +242,8 @@ class CashRepository(
                 tipo = tipo,
                 monto = monto,
                 motivo = motivo,
-                fecha = dateFormat.format(Date())
+                fecha = dateFormat.format(Date()),
+                sincronizado = 0
             )
             cashDao.insertMovement(movement)
             if (tipo == "ingreso") {
@@ -238,7 +252,14 @@ class CashRepository(
                 cashDao.addExpense(shiftId, monto)
             }
             scope.launch(Dispatchers.IO) {
-                syncService.uploadMovement(movement)
+                val res = syncService.uploadMovement(movement)
+                if (res.isSuccess) {
+                    cashDao.markMovementAsSynced(movement.id)
+                }
+                val updatedShift = cashDao.getActiveShift()
+                if (updatedShift != null && updatedShift.id == shiftId) {
+                    syncService.uploadShift(updatedShift)
+                }
             }
             Result.success(Unit)
         } catch (e: Exception) {
@@ -326,7 +347,8 @@ class SaleRepository(
                     serie = serie,
                     correlativoNumero = currentNumber,
                     comprobanteFormateado = comprobanteFormateado,
-                    anulado = 0
+                    anulado = 0,
+                    sincronizado = 0
                 )
                 saleDao.insertSale(sEntity)
 
@@ -368,7 +390,14 @@ class SaleRepository(
 
             // 5. Subir a Firestore en background
             scope.launch(Dispatchers.IO) {
-                syncService.uploadSale(saleEntity, detailEntities)
+                val uploadResult = syncService.uploadSale(saleEntity, detailEntities)
+                if (uploadResult.isSuccess) {
+                    saleDao.markSaleAsSynced(saleEntity.id)
+                }
+                val updatedShift = db.cashDao().getActiveShift()
+                if (updatedShift != null) {
+                    syncService.uploadShift(updatedShift)
+                }
             }
 
             Result.success(comprobante)
@@ -401,6 +430,10 @@ class SaleRepository(
             }
             scope.launch(Dispatchers.IO) {
                 syncService.cancelSale(saleId, details)
+                val updatedShift = db.cashDao().getActiveShift()
+                if (updatedShift != null) {
+                    syncService.uploadShift(updatedShift)
+                }
             }
             Result.success(Unit)
         } catch (e: Exception) {

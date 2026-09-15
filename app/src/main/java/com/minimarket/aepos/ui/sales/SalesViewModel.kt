@@ -6,6 +6,7 @@ import com.minimarket.aepos.data.repository.ProductRepository
 import com.minimarket.aepos.data.repository.SaleRepository
 import com.minimarket.aepos.domain.model.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -24,7 +25,9 @@ data class SalesUiState(
     val isPagosMixtosOpen: Boolean = false,
     val isProcessing: Boolean = false,
     val lastSuccessComprobante: String? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val weightDialogProduct: Product? = null,
+    val initialWeightForDialog: Double = 0.500
 ) {
     val total: Double
         get() {
@@ -64,11 +67,13 @@ class SalesViewModel(
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
+    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     private fun observeProducts() {
         viewModelScope.launch {
             combine(
-                _uiState.map { it.searchQuery }.distinctUntilChanged(),
+                _uiState.map { it.searchQuery }.distinctUntilChanged().debounce { q ->
+                    if (q.isBlank()) 0L else 250L
+                },
                 _uiState.map { it.selectedCategory }.distinctUntilChanged()
             ) { query, category ->
                 Pair(query, category)
@@ -108,11 +113,78 @@ class SalesViewModel(
         _uiState.update { it.copy(isPagosMixtosOpen = false) }
     }
 
+    fun openWeightDialog(product: Product, initialWeight: Double = 0.500) {
+        _uiState.update {
+            it.copy(
+                weightDialogProduct = product,
+                initialWeightForDialog = if (initialWeight > 0.0) initialWeight else 0.500
+            )
+        }
+    }
+
+    fun closeWeightDialog() {
+        _uiState.update {
+            it.copy(weightDialogProduct = null)
+        }
+    }
+
+    fun addWeightItemToCart(product: Product, weight: Double) {
+        if (weight <= 0.0) return
+        _uiState.update { state ->
+            val currentCart = state.cart.toMutableList()
+            val existingIndex = currentCart.indexOfFirst { it.product.id == product.id }
+
+            if (existingIndex >= 0) {
+                val current = currentCart[existingIndex]
+                val nuevaCantidad = Math.round((current.cantidad + weight) * 1000.0) / 1000.0
+                if (nuevaCantidad > product.stock) {
+                    return@update state.copy(
+                        weightDialogProduct = null,
+                        errorMessage = "Stock insuficiente para ${product.nombre} (Stock: ${product.stock})"
+                    )
+                }
+                currentCart[existingIndex] = current.copy(cantidad = nuevaCantidad)
+            } else {
+                if (weight > product.stock) {
+                    return@update state.copy(
+                        weightDialogProduct = null,
+                        errorMessage = "Stock insuficiente para ${product.nombre} (Stock: ${product.stock})"
+                    )
+                }
+                currentCart.add(CartItem(product = product, cantidad = weight))
+            }
+            state.copy(cart = currentCart, weightDialogProduct = null, errorMessage = null)
+        }
+    }
+
+    fun updateCartItemQuantity(productId: String, newQuantity: Double) {
+        if (newQuantity <= 0.0) {
+            removeFromCart(productId)
+            return
+        }
+        _uiState.update { state ->
+            val currentCart = state.cart.toMutableList()
+            val index = currentCart.indexOfFirst { it.product.id == productId }
+            if (index >= 0) {
+                val current = currentCart[index]
+                if (newQuantity > current.product.stock) {
+                    return@update state.copy(errorMessage = "Stock insuficiente para ${current.product.nombre} (Stock: ${current.product.stock})")
+                }
+                currentCart[index] = current.copy(cantidad = Math.round(newQuantity * 1000.0) / 1000.0)
+            }
+            state.copy(cart = currentCart, errorMessage = null)
+        }
+    }
+
     fun onBarcodeScanned(barcode: String) {
         viewModelScope.launch {
             val product = productRepository.getByBarcode(barcode)
             if (product != null) {
-                addToCart(product)
+                if (product.isWeightUnit) {
+                    openWeightDialog(product)
+                } else {
+                    addToCart(product)
+                }
             } else {
                 _uiState.update {
                     it.copy(errorMessage = "Código '$barcode' no registrado en catálogo")
@@ -122,16 +194,22 @@ class SalesViewModel(
     }
 
     fun addToCart(product: Product) {
+        if (product.isWeightUnit) {
+            openWeightDialog(product)
+            return
+        }
         _uiState.update { state ->
             val currentCart = state.cart.toMutableList()
             val existingIndex = currentCart.indexOfFirst { it.product.id == product.id }
 
             if (existingIndex >= 0) {
                 val current = currentCart[existingIndex]
-                if (current.cantidad + 1.0 > product.stock) {
+                val step = 1.0
+                val nuevaCant = Math.round((current.cantidad + step) * 1000.0) / 1000.0
+                if (nuevaCant > product.stock) {
                     return@update state.copy(errorMessage = "Stock insuficiente para ${product.nombre}")
                 }
-                currentCart[existingIndex] = current.copy(cantidad = current.cantidad + 1.0)
+                currentCart[existingIndex] = current.copy(cantidad = nuevaCant)
             } else {
                 if (product.stock < 1.0) {
                     return@update state.copy(errorMessage = "Producto agotado: ${product.nombre}")
@@ -148,8 +226,10 @@ class SalesViewModel(
             val index = currentCart.indexOfFirst { it.product.id == productId }
             if (index >= 0) {
                 val current = currentCart[index]
-                if (current.cantidad > 1.0) {
-                    currentCart[index] = current.copy(cantidad = current.cantidad - 1.0)
+                val step = if (current.product.isWeightUnit) 0.100 else 1.0
+                val nuevaCantidad = Math.round((current.cantidad - step) * 1000.0) / 1000.0
+                if (nuevaCantidad > 0.0) {
+                    currentCart[index] = current.copy(cantidad = nuevaCantidad)
                 } else {
                     currentCart.removeAt(index)
                 }

@@ -1,25 +1,21 @@
 package com.minimarket.aepos.ui.inventory
 
 import android.content.Intent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.minimarket.aepos.domain.model.Product
-import com.minimarket.aepos.ui.theme.*
 
 @Composable
 fun ShoppingListDialog(
@@ -34,7 +30,7 @@ fun ShoppingListDialog(
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(24.dp),
+            shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             modifier = Modifier
                 .fillMaxWidth()
@@ -63,11 +59,11 @@ fun ShoppingListDialog(
                         )
                     }
                     IconButton(onClick = onDismiss) {
-                        Icon(imageVector = Icons.Default.Close, contentDescription = "Cerrar")
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "Cerrar", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
                 if (lowStockProducts.isEmpty()) {
                     Box(
@@ -79,7 +75,7 @@ fun ShoppingListDialog(
                         Text(
                             text = "¡Excelente! No hay productos con stock bajo.",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Emerald400
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 } else {
@@ -91,8 +87,8 @@ fun ShoppingListDialog(
                     ) {
                         items(lowStockProducts, key = { it.id }) { prod ->
                             Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant
+                                shape = MaterialTheme.shapes.small,
+                                color = MaterialTheme.colorScheme.surfaceContainer
                             ) {
                                 Row(
                                     modifier = Modifier
@@ -110,14 +106,14 @@ fun ShoppingListDialog(
                                         Text(
                                             text = "Stock Actual: ${prod.stock.toInt()} ${prod.unidadMedida} • ${prod.categoria}",
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = if (prod.stock <= 5) Red500 else Amber500
+                                            color = if (prod.stock <= 5) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary
                                         )
                                     }
 
                                     Button(
                                         onClick = { onRestockProduct(prod.id, 10.0) },
-                                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
-                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                        shape = MaterialTheme.shapes.extraSmall,
                                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                                     ) {
                                         Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
@@ -153,8 +149,8 @@ fun ShoppingListDialog(
                             }
                             context.startActivity(Intent.createChooser(sendIntent, "Enviar Lista de Compras"))
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Teal500),
-                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                        shape = MaterialTheme.shapes.small,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))

@@ -18,7 +18,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FlashOff
@@ -40,7 +39,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
-import com.minimarket.aepos.ui.theme.*
 import java.util.concurrent.Executors
 
 @Composable
@@ -71,6 +69,22 @@ fun BarcodeScannerModal(
         }
     }
 
+    val toneGenerator = remember {
+        try {
+            ToneGenerator(AudioManager.STREAM_MUSIC, 100)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            try {
+                toneGenerator?.release()
+            } catch (_: Exception) {}
+        }
+    }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -85,8 +99,7 @@ fun BarcodeScannerModal(
                     onBarcodeScanned = { code ->
                         // Emisión de Beep de escáner POS
                         try {
-                            val toneGen = ToneGenerator(AudioManager.STREAM_MUSIC, 100)
-                            toneGen.startTone(ToneGenerator.TONE_PROP_BEEP, 150)
+                            toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP, 120)
                         } catch (_: Exception) {}
 
                         onBarcodeScanned(code)
@@ -99,11 +112,11 @@ fun BarcodeScannerModal(
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
-                // Estado: Solicitud de Permiso
+                // Estado: Solicitud de Permiso Material 3
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Slate950)
+                        .background(MaterialTheme.colorScheme.background)
                         .padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
@@ -111,33 +124,33 @@ fun BarcodeScannerModal(
                     Icon(
                         imageVector = Icons.Default.QrCodeScanner,
                         contentDescription = null,
-                        tint = Emerald400,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(64.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "Permiso de Cámara Requerido",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = "Necesitamos acceso a tu cámara para leer códigos de barras de productos instantáneamente.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Slate400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(20.dp))
                     Button(
                         onClick = { launcher.launch(Manifest.permission.CAMERA) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
-                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        shape = MaterialTheme.shapes.small,
                         modifier = Modifier.fillMaxWidth(0.7f)
                     ) {
                         Text("Conceder Permiso", fontWeight = FontWeight.Bold)
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     TextButton(onClick = onDismiss) {
-                        Text("Cancelar", color = Slate400)
+                        Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -152,10 +165,14 @@ fun CameraPreviewWithAnalyzer(
     val lifecycleOwner = LocalLifecycleOwner.current
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     var cameraControl by remember { mutableStateOf<androidx.camera.core.CameraControl?>(null) }
+    var cameraProviderRef by remember { mutableStateOf<ProcessCameraProvider?>(null) }
     var isTorchOn by remember { mutableStateOf(false) }
 
     DisposableEffect(Unit) {
         onDispose {
+            try {
+                cameraProviderRef?.unbindAll()
+            } catch (_: Exception) {}
             cameraExecutor.shutdown()
         }
     }
@@ -169,6 +186,7 @@ fun CameraPreviewWithAnalyzer(
                 cameraProviderFuture.addListener({
                     try {
                         val cameraProvider = cameraProviderFuture.get()
+                        cameraProviderRef = cameraProvider
 
                         val preview = Preview.Builder().build().also {
                             it.surfaceProvider = previewView.surfaceProvider
@@ -216,13 +234,13 @@ fun CameraPreviewWithAnalyzer(
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 54.dp)
                 .size(52.dp)
-                .background(Slate900.copy(alpha = 0.85f), CircleShape)
-                .border(1.dp, if (isTorchOn) Emerald500 else Slate700, CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f), CircleShape)
+                .border(1.dp, if (isTorchOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, CircleShape)
         ) {
             Icon(
                 imageVector = if (isTorchOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
                 contentDescription = "Linterna",
-                tint = if (isTorchOn) Emerald400 else Color.White,
+                tint = if (isTorchOn) MaterialTheme.colorScheme.primary else Color.White,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -245,6 +263,8 @@ fun ScannerOverlay(
         label = "LaserPosition"
     )
 
+    val primaryColor = MaterialTheme.colorScheme.primary
+
     Box(modifier = modifier) {
         // Botón Cerrar
         IconButton(
@@ -253,8 +273,8 @@ fun ScannerOverlay(
                 .align(Alignment.TopEnd)
                 .padding(top = 42.dp, end = 18.dp)
                 .size(40.dp)
-                .background(Slate900.copy(alpha = 0.8f), CircleShape)
-                .border(1.dp, Slate700, CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.8f), CircleShape)
+                .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
         ) {
             Icon(imageVector = Icons.Default.Close, contentDescription = "Cerrar", tint = Color.White, modifier = Modifier.size(20.dp))
         }
@@ -267,9 +287,9 @@ fun ScannerOverlay(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Surface(
-                color = Slate900.copy(alpha = 0.85f),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(1.dp, Slate700)
+                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.85f),
+                shape = MaterialTheme.shapes.small,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
             ) {
                 Text(
                     text = "Apunta al código de barras del producto",
@@ -288,13 +308,13 @@ fun ScannerOverlay(
             modifier = Modifier
                 .size(width = 280.dp, height = 190.dp)
                 .align(Alignment.Center)
-                .border(width = 2.dp, color = Emerald500, shape = RoundedCornerShape(18.dp))
-                .clip(RoundedCornerShape(18.dp))
+                .border(width = 2.dp, color = primaryColor, shape = MaterialTheme.shapes.medium)
+                .clip(MaterialTheme.shapes.medium)
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val y = size.height * laserPosition
                 drawLine(
-                    color = Color(0xFF10B981),
+                    color = primaryColor,
                     start = Offset(x = 0f, y = y),
                     end = Offset(x = size.width, y = y),
                     strokeWidth = 3.dp.toPx()
@@ -303,4 +323,3 @@ fun ScannerOverlay(
         }
     }
 }
-

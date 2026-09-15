@@ -12,6 +12,14 @@ import com.minimarket.aepos.data.repository.UserRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
 class AEPosApplication : Application() {
     private val applicationScope = CoroutineScope(SupervisorJob())
 
@@ -46,5 +54,22 @@ class AEPosApplication : Application() {
         FirebaseConfig.init(this)
         syncService.startRealtimeProductsListener()
         syncService.startRealtimeUsersListener()
+        registerNetworkCallback()
+    }
+
+    private fun registerNetworkCallback() {
+        try {
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            val networkRequest = NetworkRequest.Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
+            connectivityManager?.registerNetworkCallback(networkRequest, object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    applicationScope.launch(Dispatchers.IO) {
+                        syncService.syncPendingOutbox()
+                    }
+                }
+            })
+        } catch (_: Exception) {}
     }
 }

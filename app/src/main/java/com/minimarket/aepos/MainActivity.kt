@@ -27,14 +27,22 @@ import com.minimarket.aepos.ui.navigation.AdaptivePosScaffold
 import com.minimarket.aepos.ui.reports.ReportsViewModel
 import com.minimarket.aepos.ui.sales.SalesViewModel
 import com.minimarket.aepos.ui.shopping.ShoppingListViewModel
+import android.view.KeyEvent
 import com.minimarket.aepos.ui.theme.AEPOSTheme
 import com.minimarket.aepos.ui.theme.Emerald500
 import com.minimarket.aepos.ui.theme.Slate950
 import com.minimarket.aepos.ui.users.UsersViewModel
+import com.minimarket.aepos.utils.BarcodeHardwareReceiver
 
 class MainActivity : ComponentActivity() {
 
     private val app by lazy { application as AEPosApplication }
+
+    private val barcodeReceiver by lazy {
+        BarcodeHardwareReceiver { barcode ->
+            salesViewModel.onBarcodeScanned(barcode)
+        }
+    }
 
     private val authViewModel: AuthViewModel by viewModels {
         object : ViewModelProvider.Factory {
@@ -139,6 +147,13 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (barcodeReceiver.onKeyEvent(event)) {
+            return true
+        }
+        return super.dispatchKeyEvent(event)
     }
 }
 

@@ -1,15 +1,12 @@
 package com.minimarket.aepos.ui.users
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -18,7 +15,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -31,7 +27,6 @@ import androidx.lifecycle.viewModelScope
 import com.minimarket.aepos.data.repository.UserRepository
 import com.minimarket.aepos.domain.model.User
 import com.minimarket.aepos.domain.model.UserRole
-import com.minimarket.aepos.ui.theme.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -194,13 +189,13 @@ fun UsersScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = Slate950,
+        containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             if (activeUser.isAdmin) {
                 FloatingActionButton(
                     onClick = { viewModel.openAddUser() },
-                    containerColor = Emerald500,
-                    contentColor = Color.White,
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                     shape = CircleShape
                 ) {
                     Icon(imageVector = Icons.Default.PersonAdd, contentDescription = "Nuevo Usuario")
@@ -223,35 +218,35 @@ fun UsersScreen(
                     Text(
                         text = "Personal & Accesos",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "Gestión de cajeros y roles POS",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Slate400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 Button(
                     onClick = { viewModel.openUserSwitch() },
-                    colors = ButtonDefaults.buttonColors(containerColor = Slate850),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, Slate700),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    shape = MaterialTheme.shapes.small,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Icon(imageVector = Icons.Default.SwapHoriz, contentDescription = null, tint = Emerald400, modifier = Modifier.size(18.dp))
+                    Icon(imageVector = Icons.Default.SwapHoriz, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Cambiar PIN", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text("Cambiar PIN", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Sesión Actual Pro
+            // Sesión Actual Pro Material 3
             Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Slate900),
-                border = BorderStroke(1.dp, Slate800),
+                shape = MaterialTheme.shapes.medium,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -261,21 +256,21 @@ fun UsersScreen(
                     Box(contentAlignment = Alignment.BottomEnd) {
                         Surface(
                             shape = CircleShape,
-                            color = if (activeUser.isAdmin) Emerald500 else Blue500,
+                            color = if (activeUser.isAdmin) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(48.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Text(
                                     text = activeUser.nombreCompleto.take(1).uppercase().ifBlank { "U" },
                                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onPrimary
                                 )
                             }
                         }
                         Surface(
                             shape = CircleShape,
-                            color = Emerald400,
-                            modifier = Modifier.size(14.dp).border(2.dp, Slate900, CircleShape)
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp).border(2.dp, MaterialTheme.colorScheme.surfaceContainer, CircleShape)
                         ) {}
                     }
                     
@@ -285,18 +280,18 @@ fun UsersScreen(
                         Text(
                             text = "SESIÓN ACTIVA",
                             style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
-                            color = Emerald400,
+                            color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Black
                         )
                         Text(
                             text = activeUser.nombreCompleto,
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
                             text = "${activeUser.role.label} • @${activeUser.username}",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Slate400
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -307,14 +302,14 @@ fun UsersScreen(
             Text(
                 text = "Personal Registrado (${state.allUsers.size})",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             if (state.allUsers.isEmpty()) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Emerald500)
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             } else {
                 LazyColumn(
@@ -363,11 +358,11 @@ fun UserItemRow(
     onDelete: () -> Unit
 ) {
     Card(
-        shape = RoundedCornerShape(14.dp),
+        shape = MaterialTheme.shapes.small,
         colors = CardDefaults.cardColors(
-            containerColor = if (isCurrent) Slate900 else Slate900
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        border = BorderStroke(1.dp, if (isCurrent) Emerald500.copy(alpha = 0.5f) else Slate800),
+        border = BorderStroke(1.dp, if (isCurrent) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -376,15 +371,15 @@ fun UserItemRow(
         ) {
             Surface(
                 shape = CircleShape,
-                color = if (user.isAdmin) Emerald500.copy(alpha = 0.2f) else Slate800,
-                border = BorderStroke(1.dp, if (user.isAdmin) Emerald500.copy(alpha = 0.4f) else Slate700),
+                color = if (user.isAdmin) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceContainerHigh,
+                border = BorderStroke(1.dp, if (user.isAdmin) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f) else MaterialTheme.colorScheme.outlineVariant),
                 modifier = Modifier.size(42.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = if (user.isAdmin) Icons.Default.Shield else Icons.Default.Person,
                         contentDescription = null,
-                        tint = if (user.isAdmin) Emerald400 else Slate400,
+                        tint = if (user.isAdmin) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -397,20 +392,20 @@ fun UserItemRow(
                     Text(
                         text = user.nombreCompleto,
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     if (isCurrent) {
                         Spacer(modifier = Modifier.width(6.dp))
                         Surface(
-                            color = Emerald500,
-                            shape = RoundedCornerShape(4.dp)
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = MaterialTheme.shapes.extraSmall
                         ) {
                             Text(
                                 "ACTIVO",
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
                                 fontSize = 8.sp,
                                 fontWeight = FontWeight.Black,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                     }
@@ -418,7 +413,7 @@ fun UserItemRow(
                 Text(
                     text = "${user.role.label} • @${user.username}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Slate400
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
                 // Mostrar permisos de forma compacta
@@ -446,10 +441,10 @@ fun UserItemRow(
             if (!isCurrent) {
                 Row {
                     IconButton(onClick = onEdit, modifier = Modifier.size(30.dp)) {
-                        Icon(Icons.Default.Edit, "Editar", tint = Slate400, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Edit, "Editar", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                     }
                     IconButton(onClick = onDelete, modifier = Modifier.size(30.dp)) {
-                        Icon(Icons.Default.DeleteOutline, "Eliminar", tint = Red400, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.DeleteOutline, "Eliminar", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                     }
                 }
             }
@@ -460,15 +455,15 @@ fun UserItemRow(
 @Composable
 fun PermissionBadge(label: String, active: Boolean) {
     Surface(
-        shape = RoundedCornerShape(4.dp),
-        color = if (active) Emerald700.copy(alpha = 0.2f) else Slate850,
-        border = BorderStroke(0.5.dp, if (active) Emerald500.copy(alpha = 0.3f) else Slate750)
+        shape = MaterialTheme.shapes.extraSmall,
+        color = if (active) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceContainerHigh,
+        border = BorderStroke(0.5.dp, if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else MaterialTheme.colorScheme.outlineVariant)
     ) {
         Text(
             text = label,
             fontSize = 8.sp,
             fontWeight = FontWeight.SemiBold,
-            color = if (active) Emerald300 else Slate500,
+            color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
         )
     }
@@ -483,19 +478,19 @@ fun UserSwitchDialog(
     var enteredPin by remember { mutableStateOf("") }
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = Emerald500,
-        unfocusedBorderColor = Slate700,
-        focusedContainerColor = Slate850,
-        unfocusedContainerColor = Slate850,
-        focusedTextColor = Color.White,
-        unfocusedTextColor = Color.White
+        focusedBorderColor = MaterialTheme.colorScheme.primary,
+        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
     )
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Slate900),
-            border = BorderStroke(1.dp, Slate700),
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier.fillMaxWidth().padding(12.dp)
         ) {
             Column(
@@ -504,12 +499,12 @@ fun UserSwitchDialog(
             ) {
                 Surface(
                     shape = CircleShape,
-                    color = Emerald500.copy(alpha = 0.15f),
-                    border = BorderStroke(1.dp, Emerald500.copy(alpha = 0.3f)),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)),
                     modifier = Modifier.size(56.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.LockOpen, null, tint = Emerald400, modifier = Modifier.size(28.dp))
+                        Icon(Icons.Default.LockOpen, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
                     }
                 }
 
@@ -518,12 +513,12 @@ fun UserSwitchDialog(
                 Text(
                     text = "Control de Acceso",
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "Ingrese su PIN asignado",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Slate400
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(modifier = Modifier.height(18.dp))
@@ -531,17 +526,17 @@ fun UserSwitchDialog(
                 OutlinedTextField(
                     value = enteredPin,
                     onValueChange = { if (it.length <= 6) enteredPin = it },
-                    placeholder = { Text("••••", color = Slate500) },
+                    placeholder = { Text("••••", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     singleLine = true,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = MaterialTheme.shapes.small,
                     colors = textFieldColors,
                     modifier = Modifier.fillMaxWidth(0.75f)
                 )
 
                 errorMessage?.let { error ->
-                    Text(text = error, color = Red400, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                    Text(text = error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -552,18 +547,18 @@ fun UserSwitchDialog(
                 ) {
                     OutlinedButton(
                         onClick = onDismiss,
-                        border = BorderStroke(1.dp, Slate700),
-                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                        shape = MaterialTheme.shapes.small,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Cancelar", color = Slate300)
+                        Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Button(
                         onClick = { onPinSubmitted(enteredPin) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         enabled = enteredPin.length >= 4,
                         modifier = Modifier.weight(1.3f),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = MaterialTheme.shapes.small
                     ) {
                         Text("Ingresar", fontWeight = FontWeight.Bold)
                     }
@@ -593,21 +588,21 @@ fun AddEditUserDialog(
     var canManageShopping by remember { mutableStateOf(user?.hasPermission(User.PERM_SHOPPING_MANAGE) ?: false) }
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = Emerald500,
-        unfocusedBorderColor = Slate700,
-        focusedContainerColor = Slate850,
-        unfocusedContainerColor = Slate850,
-        focusedTextColor = Color.White,
-        unfocusedTextColor = Color.White,
-        focusedLabelColor = Emerald400,
-        unfocusedLabelColor = Slate400
+        focusedBorderColor = MaterialTheme.colorScheme.primary,
+        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+        focusedLabelColor = MaterialTheme.colorScheme.primary,
+        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
     )
 
     Dialog(onDismissRequest = { if (!isProcessing) onDismiss() }) {
         Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Slate900),
-            border = BorderStroke(1.dp, Slate700),
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
         ) {
             Column(
@@ -618,7 +613,7 @@ fun AddEditUserDialog(
                 Text(
                     text = if (user == null) "Nuevo Colaborador" else "Editar Perfil",
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -627,7 +622,7 @@ fun AddEditUserDialog(
                     value = nombreCompleto,
                     onValueChange = { nombreCompleto = it },
                     label = { Text("Nombre Completo *") },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = MaterialTheme.shapes.small,
                     colors = textFieldColors,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -640,7 +635,7 @@ fun AddEditUserDialog(
                         value = username,
                         onValueChange = { username = it },
                         label = { Text("Usuario *") },
-                        shape = RoundedCornerShape(12.dp),
+                        shape = MaterialTheme.shapes.small,
                         colors = textFieldColors,
                         singleLine = true,
                         modifier = Modifier.weight(1f)
@@ -652,7 +647,7 @@ fun AddEditUserDialog(
                         placeholder = { Text("4-6 dígitos") },
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = MaterialTheme.shapes.small,
                         colors = textFieldColors,
                         singleLine = true,
                         modifier = Modifier.weight(1f)
@@ -661,7 +656,7 @@ fun AddEditUserDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                Text("Rol de Acceso", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = Emerald400)
+                Text("Rol de Acceso", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold), color = MaterialTheme.colorScheme.primary)
                 Row(modifier = Modifier.padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = role == UserRole.COLABORADOR,
@@ -677,7 +672,7 @@ fun AddEditUserDialog(
 
                 if (role == UserRole.COLABORADOR) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Permisos Especiales (Consulta activa por defecto)", style = MaterialTheme.typography.bodySmall, color = Slate400)
+                    Text("Permisos Especiales (Consulta activa por defecto)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     
                     PermissionSwitch("Crear / Modificar Productos", canWriteInventory) { canWriteInventory = it }
                     PermissionSwitch("Monitorear Ventas de la PC", canViewReports) { canViewReports = it }
@@ -685,7 +680,7 @@ fun AddEditUserDialog(
                 }
 
                 validationError?.let {
-                    Text(it, color = Red400, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+                    Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -693,11 +688,11 @@ fun AddEditUserDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedButton(
                         onClick = onDismiss,
-                        border = BorderStroke(1.dp, Slate700),
-                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                        shape = MaterialTheme.shapes.small,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Cancelar", color = Slate300)
+                        Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Button(
                         onClick = {
@@ -718,12 +713,15 @@ fun AddEditUserDialog(
                             onSave(username, nombreCompleto, email, pin, role, perms)
                         },
                         enabled = !isProcessing,
-                        colors = ButtonDefaults.buttonColors(containerColor = Emerald500),
-                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
+                        ),
+                        shape = MaterialTheme.shapes.small,
                         modifier = Modifier.weight(1.4f)
                     ) {
                         if (isProcessing) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp))
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(20.dp))
                         } else {
                             Text("Guardar", fontWeight = FontWeight.Bold)
                         }
@@ -741,12 +739,11 @@ fun PermissionSwitch(label: String, checked: Boolean, onCheckedChange: (Boolean)
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = Slate300)
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
         Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(checkedThumbColor = Emerald500, checkedTrackColor = Emerald900)
+            colors = SwitchDefaults.colors(checkedThumbColor = MaterialTheme.colorScheme.primary, checkedTrackColor = MaterialTheme.colorScheme.primaryContainer)
         )
     }
 }
-

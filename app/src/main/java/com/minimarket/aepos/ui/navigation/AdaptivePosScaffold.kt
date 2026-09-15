@@ -2,11 +2,9 @@ package com.minimarket.aepos.ui.navigation
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -37,7 +35,6 @@ import com.minimarket.aepos.ui.sales.SalesViewModel
 import com.minimarket.aepos.ui.sales.TabletSalesScreen
 import com.minimarket.aepos.ui.shopping.ShoppingListScreen
 import com.minimarket.aepos.ui.shopping.ShoppingListViewModel
-import com.minimarket.aepos.ui.theme.*
 import com.minimarket.aepos.ui.users.UserSwitchDialog
 import com.minimarket.aepos.ui.users.UsersScreen
 import com.minimarket.aepos.ui.users.UsersViewModel
@@ -106,14 +103,14 @@ fun AdaptivePosScaffold(
     val isTablet = windowWidthSizeClass != WindowWidthSizeClass.Compact
 
     if (isTablet) {
-        // LAYOUT TABLET (Navigation Rail Lateral + Contenido)
+        // LAYOUT TABLET (Navigation Rail Lateral + Contenido) Material 3
         Row(
             modifier = modifier
                 .fillMaxSize()
-                .background(Slate950)
+                .background(MaterialTheme.colorScheme.background)
         ) {
             NavigationRail(
-                containerColor = Slate900,
+                containerColor = MaterialTheme.colorScheme.surface,
                 contentColor = MaterialTheme.colorScheme.onSurface,
                 header = {
                     Column(
@@ -121,15 +118,15 @@ fun AdaptivePosScaffold(
                         modifier = Modifier.padding(vertical = 12.dp)
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = Emerald500,
+                            shape = MaterialTheme.shapes.small,
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(44.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.Storefront,
                                     contentDescription = null,
-                                    tint = Color.White,
+                                    tint = MaterialTheme.colorScheme.onPrimary,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
@@ -141,17 +138,17 @@ fun AdaptivePosScaffold(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp
                             ),
-                            color = Emerald400
+                            color = MaterialTheme.colorScheme.primary
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
 
                         // Perfil de Usuario Rápido
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = Slate800,
+                            shape = MaterialTheme.shapes.small,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(MaterialTheme.shapes.small)
                                 .clickable { usersViewModel.openUserSwitch() }
                         ) {
                             Column(
@@ -160,14 +157,14 @@ fun AdaptivePosScaffold(
                             ) {
                                 Surface(
                                     shape = CircleShape,
-                                    color = if (activeUser.isAdmin) Emerald500 else Blue500,
+                                    color = if (activeUser.isAdmin) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
                                     modifier = Modifier.size(28.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
                                             imageVector = if (activeUser.isAdmin) Icons.Default.AdminPanelSettings else Icons.Default.Person,
                                             contentDescription = null,
-                                            tint = Color.White,
+                                            tint = MaterialTheme.colorScheme.onPrimary,
                                             modifier = Modifier.size(16.dp)
                                         )
                                     }
@@ -175,9 +172,9 @@ fun AdaptivePosScaffold(
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = activeUser.username,
-                                    fontSize = 10.sp,
+                                    style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
@@ -201,16 +198,16 @@ fun AdaptivePosScaffold(
                         label = {
                             Text(
                                 text = destination.title,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                fontSize = 11.sp
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
                         },
                         colors = NavigationRailItemDefaults.colors(
-                            selectedIconColor = Emerald400,
-                            selectedTextColor = Emerald400,
-                            indicatorColor = Emerald500.copy(alpha = 0.2f),
-                            unselectedIconColor = Slate400,
-                            unselectedTextColor = Slate400
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
                 }
@@ -234,7 +231,7 @@ fun AdaptivePosScaffold(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Logout,
                         contentDescription = "Cerrar Sesión",
-                        tint = Slate400
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -255,15 +252,15 @@ fun AdaptivePosScaffold(
             }
         }
     } else {
-        // LAYOUT SMARTPHONE (Navegación Inferior + Top Header Sync & User Profile)
+        // LAYOUT SMARTPHONE (Navegación Inferior + Top Header Sync & User Profile) Material 3
         Scaffold(
             modifier = modifier.fillMaxSize(),
-            containerColor = Slate950,
+            containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 Surface(
-                    color = Slate900,
+                    color = MaterialTheme.colorScheme.surface,
                     modifier = Modifier.fillMaxWidth(),
-                    shadowElevation = 4.dp
+                    shadowElevation = 3.dp
                 ) {
                     Row(
                         modifier = Modifier
@@ -277,21 +274,21 @@ fun AdaptivePosScaffold(
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(Slate800.copy(alpha = 0.7f))
+                                .clip(MaterialTheme.shapes.small)
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                                 .clickable { usersViewModel.openUserSwitch() }
                                 .padding(horizontal = 10.dp, vertical = 6.dp)
                         ) {
                             Surface(
                                 shape = CircleShape,
-                                color = if (activeUser.isAdmin) Emerald500 else Blue500,
+                                color = if (activeUser.isAdmin) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.size(24.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = if (activeUser.isAdmin) Icons.Default.AdminPanelSettings else Icons.Default.Person,
                                         contentDescription = null,
-                                        tint = Color.White,
+                                        tint = MaterialTheme.colorScheme.onPrimary,
                                         modifier = Modifier.size(14.dp)
                                     )
                                 }
@@ -300,16 +297,16 @@ fun AdaptivePosScaffold(
                             Column {
                                 Text(
                                     text = "AE POS",
-                                    fontSize = 11.sp,
+                                    style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Black,
-                                    color = Emerald400,
+                                    color = MaterialTheme.colorScheme.primary,
                                     letterSpacing = 0.5.sp
                                 )
                                 Text(
                                     text = activeUser.username,
-                                    fontSize = 12.sp,
+                                    style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
@@ -327,12 +324,12 @@ fun AdaptivePosScaffold(
                                 onClick = onLogout,
                                 modifier = Modifier
                                     .size(34.dp)
-                                    .background(Slate800, CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
                             ) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.Logout,
                                     contentDescription = "Cerrar Sesión",
-                                    tint = Slate400,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -343,9 +340,9 @@ fun AdaptivePosScaffold(
             bottomBar = {
                 if (visibleDestinations.size > 1) {
                     NavigationBar(
-                        containerColor = Slate900,
+                        containerColor = MaterialTheme.colorScheme.surface,
                         contentColor = MaterialTheme.colorScheme.onSurface,
-                        tonalElevation = 8.dp
+                        tonalElevation = 6.dp
                     ) {
                         visibleDestinations.forEach { destination ->
                             val isSelected = currentDestination == destination
@@ -362,16 +359,16 @@ fun AdaptivePosScaffold(
                                 label = {
                                     Text(
                                         text = destination.title,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        fontSize = 11.sp
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                     )
                                 },
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = Emerald400,
-                                    selectedTextColor = Emerald400,
-                                    indicatorColor = Emerald500.copy(alpha = 0.18f),
-                                    unselectedIconColor = Slate400,
-                                    unselectedTextColor = Slate400
+                                    selectedIconColor = MaterialTheme.colorScheme.primary,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                                    unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             )
                         }
@@ -411,15 +408,15 @@ fun SyncIndicatorBadge(
     onClick: () -> Unit
 ) {
     val (color, label, icon) = when (status) {
-        SyncStateStatus.SYNCED -> Triple(Emerald400, "Cloud OK", Icons.Default.CloudDone)
-        SyncStateStatus.SYNCING -> Triple(Amber500, "Sync...", Icons.Default.CloudSync)
-        SyncStateStatus.OFFLINE -> Triple(Slate400, "Offline", Icons.Default.CloudOff)
-        SyncStateStatus.ERROR -> Triple(Red500, "Reintentar", Icons.Default.SyncProblem)
+        SyncStateStatus.SYNCED -> Triple(MaterialTheme.colorScheme.primary, "Cloud OK", Icons.Default.CloudDone)
+        SyncStateStatus.SYNCING -> Triple(MaterialTheme.colorScheme.tertiary, "Sync...", Icons.Default.CloudSync)
+        SyncStateStatus.OFFLINE -> Triple(MaterialTheme.colorScheme.onSurfaceVariant, "Offline", Icons.Default.CloudOff)
+        SyncStateStatus.ERROR -> Triple(MaterialTheme.colorScheme.error, "Reintentar", Icons.Default.SyncProblem)
     }
 
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
+        shape = MaterialTheme.shapes.extraLarge,
         color = color.copy(alpha = 0.12f),
         border = BorderStroke(1.dp, color.copy(alpha = 0.25f))
     ) {
@@ -436,7 +433,7 @@ fun SyncIndicatorBadge(
             )
             Text(
                 text = label,
-                fontSize = 10.sp,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = color
             )

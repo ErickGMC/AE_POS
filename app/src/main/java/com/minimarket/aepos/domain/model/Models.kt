@@ -18,7 +18,10 @@ data class Product(
     val productoPadreId: String? = null,
     val etiquetaVariante: String? = null,
     val mostrarPrecioWeb: Boolean = false
-)
+) {
+    val isWeightUnit: Boolean
+        get() = unidadMedida.trim().lowercase() in listOf("kg", "kilo", "kilos", "kilogramo", "kilogramos", "g", "gr", "gramo", "gramos", "granel", "peso")
+}
 
 data class CartItem(
     val product: Product,

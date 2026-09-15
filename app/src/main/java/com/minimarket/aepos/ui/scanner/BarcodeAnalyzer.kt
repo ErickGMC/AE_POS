@@ -46,6 +46,7 @@ class BarcodeAnalyzer(
                                 lastScannedCode = code
                                 lastScannedTimestamp = currentTime
                                 onBarcodeDetected(code)
+                                return@addOnSuccessListener
                             }
                         }
                     }

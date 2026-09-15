@@ -39,7 +39,8 @@ data class ProductEntity(
 @Entity(
     tableName = "ventas",
     indices = [
-        Index(value = ["fecha"])
+        Index(value = ["fecha"]),
+        Index(value = ["sincronizado"])
     ]
 )
 data class SaleEntity(
@@ -54,7 +55,8 @@ data class SaleEntity(
     val serie: String = "M001",
     val correlativoNumero: Int = 1,
     val comprobanteFormateado: String = "M001-00000001",
-    val anulado: Int = 0
+    val anulado: Int = 0,
+    val sincronizado: Int = 1
 )
 
 @Entity(

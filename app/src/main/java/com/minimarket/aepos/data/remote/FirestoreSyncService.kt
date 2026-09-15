@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -42,6 +43,8 @@ class FirestoreSyncService(
     private var productsListenerRegistration: ListenerRegistration? = null
     private var usersListenerRegistration: ListenerRegistration? = null
     private var salesListenerRegistration: ListenerRegistration? = null
+    private var cashListenerRegistration: ListenerRegistration? = null
+    private var movementsListenerRegistration: ListenerRegistration? = null
 
     private val _syncStatus = MutableStateFlow(SyncStatus())
     val syncStatus: StateFlow<SyncStatus> = _syncStatus.asStateFlow()
@@ -50,6 +53,19 @@ class FirestoreSyncService(
         startRealtimeProductsListener()
         startRealtimeUsersListener()
         startRealtimeSalesListener()
+        startRealtimeCashListener()
+        observePendingCount()
+        scope.launch(Dispatchers.IO) {
+            syncPendingOutbox()
+        }
+    }
+
+    private fun observePendingCount() {
+        scope.launch(Dispatchers.IO) {
+            db.saleDao().getPendingSalesCountFlow().collect { count ->
+                _syncStatus.update { it.copy(pendingUploadsCount = count) }
+            }
+        }
     }
 
     /**
@@ -170,7 +186,9 @@ class FirestoreSyncService(
     fun startRealtimeSalesListener() {
         try {
             salesListenerRegistration?.remove()
+            val todayPrefix = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
             salesListenerRegistration = firestore.collection("ventas")
+                .whereGreaterThanOrEqualTo("fechaString", todayPrefix)
                 .addSnapshotListener { snapshot, error ->
                     if (error == null && snapshot != null && !snapshot.isEmpty) {
                         scope.launch(Dispatchers.IO) {
@@ -198,54 +216,149 @@ class FirestoreSyncService(
                                         serie = serieVal,
                                         correlativoNumero = numVal,
                                         comprobanteFormateado = ticketVal,
-                                        anulado = if (anuladoVal) 1 else 0
+                                        anulado = if (anuladoVal) 1 else 0,
+                                        sincronizado = 1
                                     )
                                 }
                                 db.saleDao().insertAllSales(sales)
 
-                                // Descargar detalles faltantes (ej. ventas generadas en PC o web)
+                                // Descargar o registrar detalles de la venta
                                 for (doc in snapshot.documents) {
                                     val sId = doc.id
                                     val existing = db.saleDao().getDetailsForSale(sId)
                                     if (existing.isEmpty()) {
-                                        try {
-                                            val detSnap = firestore.collection("ventas").document(sId).collection("detalle").get().await()
-                                            val detList = mutableListOf<SaleDetailEntity>()
-                                            for (detDoc in detSnap.documents) {
-                                                val detData = detDoc.data ?: continue
-                                                if (detDoc.id == "items" && detData["items"] is List<*>) {
-                                                    @Suppress("UNCHECKED_CAST")
-                                                    val items = detData["items"] as List<Map<String, Any>>
-                                                    for (itm in items) {
-                                                        detList.add(
-                                                            SaleDetailEntity(
-                                                                id = (itm["id"] as? String) ?: UUID.randomUUID().toString(),
-                                                                venta_id = sId,
-                                                                producto_id = (itm["producto_id"] as? String) ?: (itm["productoId"] as? String) ?: "",
-                                                                cantidad = (itm["cantidad"] as? Number)?.toDouble() ?: 1.0,
-                                                                precio_unitario = (itm["precio_unitario"] as? Number)?.toDouble() ?: (itm["precioUnitario"] as? Number)?.toDouble() ?: 0.0,
-                                                                subtotal = (itm["subtotal"] as? Number)?.toDouble() ?: 0.0
-                                                            )
-                                                        )
-                                                    }
-                                                } else if (detData.containsKey("producto_id")) {
+                                        val detList = mutableListOf<SaleDetailEntity>()
+                                        val docData = doc.data
+                                        val rootItems = (docData?.get("items") ?: docData?.get("detalles")) as? List<*>
+                                        
+                                        if (rootItems != null && rootItems.isNotEmpty()) {
+                                            for (raw in rootItems) {
+                                                if (raw is Map<*, *>) {
                                                     detList.add(
                                                         SaleDetailEntity(
-                                                            id = (detData["id"] as? String) ?: detDoc.id,
+                                                            id = (raw["id"] as? String) ?: UUID.randomUUID().toString(),
                                                             venta_id = sId,
-                                                            producto_id = (detData["producto_id"] as? String) ?: "",
-                                                            cantidad = (detData["cantidad"] as? Number)?.toDouble() ?: 1.0,
-                                                            precio_unitario = (detData["precio_unitario"] as? Number)?.toDouble() ?: 0.0,
-                                                            subtotal = (detData["subtotal"] as? Number)?.toDouble() ?: 0.0
+                                                            producto_id = (raw["producto_id"] as? String) ?: (raw["productoId"] as? String) ?: "",
+                                                            cantidad = (raw["cantidad"] as? Number)?.toDouble() ?: 1.0,
+                                                            precio_unitario = (raw["precio_unitario"] as? Number)?.toDouble() ?: (raw["precioUnitario"] as? Number)?.toDouble() ?: 0.0,
+                                                            subtotal = (raw["subtotal"] as? Number)?.toDouble() ?: 0.0
                                                         )
                                                     )
                                                 }
                                             }
-                                            if (detList.isNotEmpty()) {
-                                                db.saleDao().insertSaleDetails(detList)
+                                        } else {
+                                            // Fallback para ventas legadas con subcolección
+                                            try {
+                                                val detSnap = firestore.collection("ventas").document(sId).collection("detalle").get().await()
+                                                for (detDoc in detSnap.documents) {
+                                                    val detData = detDoc.data ?: continue
+                                                    if (detDoc.id == "items" && detData["items"] is List<*>) {
+                                                        @Suppress("UNCHECKED_CAST")
+                                                        val items = detData["items"] as List<Map<String, Any>>
+                                                        for (itm in items) {
+                                                            detList.add(
+                                                                SaleDetailEntity(
+                                                                    id = (itm["id"] as? String) ?: UUID.randomUUID().toString(),
+                                                                    venta_id = sId,
+                                                                    producto_id = (itm["producto_id"] as? String) ?: (itm["productoId"] as? String) ?: "",
+                                                                    cantidad = (itm["cantidad"] as? Number)?.toDouble() ?: 1.0,
+                                                                    precio_unitario = (itm["precio_unitario"] as? Number)?.toDouble() ?: (itm["precioUnitario"] as? Number)?.toDouble() ?: 0.0,
+                                                                    subtotal = (itm["subtotal"] as? Number)?.toDouble() ?: 0.0
+                                                                )
+                                                            )
+                                                        }
+                                                    } else if (detData.containsKey("producto_id")) {
+                                                        detList.add(
+                                                            SaleDetailEntity(
+                                                                id = (detData["id"] as? String) ?: detDoc.id,
+                                                                venta_id = sId,
+                                                                producto_id = (detData["producto_id"] as? String) ?: "",
+                                                                cantidad = (detData["cantidad"] as? Number)?.toDouble() ?: 1.0,
+                                                                precio_unitario = (detData["precio_unitario"] as? Number)?.toDouble() ?: 0.0,
+                                                                subtotal = (detData["subtotal"] as? Number)?.toDouble() ?: 0.0
+                                                            )
+                                                        )
+                                                    }
+                                                }
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
                                             }
-                                        } catch (_: Exception) {}
+                                        }
+
+                                        if (detList.isNotEmpty()) {
+                                            db.saleDao().insertSaleDetails(detList)
+                                        }
                                     }
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                    }
+                }
+        } catch (_: Exception) {}
+    }
+
+    /**
+     * Escucha en tiempo real los turnos y movimientos de caja en Firestore.
+     */
+    fun startRealtimeCashListener() {
+        try {
+            cashListenerRegistration?.remove()
+            cashListenerRegistration = firestore.collection("caja_turnos")
+                .orderBy("fechaApertura", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .limit(15)
+                .addSnapshotListener { snapshot, error ->
+                    if (error == null && snapshot != null && !snapshot.isEmpty) {
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                for (doc in snapshot.documents) {
+                                    val data = doc.data ?: continue
+                                    val shift = CashShiftEntity(
+                                        id = doc.id,
+                                        fechaApertura = (data["fechaApertura"] as? String) ?: SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()),
+                                        fechaCierre = data["fechaCierre"] as? String,
+                                        montoInicial = (data["montoInicial"] as? Number)?.toDouble() ?: 0.0,
+                                        totalVentasEfectivo = (data["totalVentasEfectivo"] as? Number)?.toDouble() ?: 0.0,
+                                        totalVentasDigital = (data["totalVentasDigital"] as? Number)?.toDouble() ?: 0.0,
+                                        totalIngresos = (data["totalIngresos"] as? Number)?.toDouble() ?: 0.0,
+                                        totalEgresos = (data["totalEgresos"] as? Number)?.toDouble() ?: 0.0,
+                                        montoFinalReal = (data["montoFinalReal"] as? Number)?.toDouble(),
+                                        diferencia = (data["diferencia"] as? Number)?.toDouble(),
+                                        estado = (data["estado"] as? String) ?: "abierta",
+                                        cajero = (data["cajero"] as? String) ?: "Cajero Principal",
+                                        observaciones = data["observaciones"] as? String,
+                                        sincronizado = 1
+                                    )
+                                    db.cashDao().insertOrUpdateShift(shift)
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                    }
+                }
+
+            movementsListenerRegistration?.remove()
+            val todayPrefix = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            movementsListenerRegistration = firestore.collection("caja_movimientos")
+                .whereGreaterThanOrEqualTo("fecha", todayPrefix)
+                .addSnapshotListener { snapshot, error ->
+                    if (error == null && snapshot != null && !snapshot.isEmpty) {
+                        scope.launch(Dispatchers.IO) {
+                            try {
+                                for (doc in snapshot.documents) {
+                                    val data = doc.data ?: continue
+                                    val mov = CashMovementEntity(
+                                        id = doc.id,
+                                        turnoId = (data["turnoId"] as? String) ?: "",
+                                        tipo = (data["tipo"] as? String) ?: "ingreso",
+                                        monto = (data["monto"] as? Number)?.toDouble() ?: 0.0,
+                                        motivo = (data["motivo"] as? String) ?: "Movimiento",
+                                        fecha = (data["fecha"] as? String) ?: SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()),
+                                        sincronizado = 1
+                                    )
+                                    db.cashDao().insertMovement(mov)
                                 }
                             } catch (e: Exception) {
                                 e.printStackTrace()
@@ -370,7 +483,18 @@ class FirestoreSyncService(
 
             val batch = firestore.batch()
 
-            // 1. Cabecera de Venta
+            val itemsList = details.map { item ->
+                hashMapOf(
+                    "id" to item.id,
+                    "venta_id" to saleEntity.id,
+                    "producto_id" to item.producto_id,
+                    "cantidad" to item.cantidad,
+                    "precio_unitario" to item.precio_unitario,
+                    "subtotal" to item.subtotal
+                )
+            }
+
+            // 1. Cabecera y detalle de Venta unificados en 1 solo documento (1 sola escritura)
             val saleDocRef = firestore.collection("ventas").document(saleEntity.id)
             val saleMap = hashMapOf(
                 "id" to saleEntity.id,
@@ -385,40 +509,16 @@ class FirestoreSyncService(
                 "correlativoNumero" to saleEntity.correlativoNumero,
                 "numeroTicket" to saleEntity.comprobanteFormateado,
                 "anulado" to (saleEntity.anulado == 1),
-                "origen" to "AE_POS_ANDROID"
+                "origen" to "AE_POS_ANDROID",
+                "items" to itemsList
             )
             batch.set(saleDocRef, saleMap)
 
-            // 2. Descontar Stock en Firestore para cada producto
+            // 2. Descontar Stock atómico en Firestore
             for (item in details) {
-                val detailDocRef = saleDocRef.collection("detalle").document(item.id)
-                val detailMap = hashMapOf(
-                    "id" to item.id,
-                    "venta_id" to saleEntity.id,
-                    "producto_id" to item.producto_id,
-                    "cantidad" to item.cantidad,
-                    "precio_unitario" to item.precio_unitario,
-                    "subtotal" to item.subtotal
-                )
-                batch.set(detailDocRef, detailMap)
-
-                // Decremento de stock atómico en Firestore
                 val prodRef = firestore.collection("productos").document(item.producto_id)
                 batch.update(prodRef, "stock", com.google.firebase.firestore.FieldValue.increment(-item.cantidad))
             }
-
-            // 2b. Formato dual compatible con Desktop POS (documento 'items' con array)
-            val itemsList = details.map { item ->
-                hashMapOf(
-                    "id" to item.id,
-                    "venta_id" to saleEntity.id,
-                    "producto_id" to item.producto_id,
-                    "cantidad" to item.cantidad,
-                    "precio_unitario" to item.precio_unitario,
-                    "subtotal" to item.subtotal
-                )
-            }
-            batch.set(saleDocRef.collection("detalle").document("items"), hashMapOf("items" to itemsList))
 
             // 3. Actualizar correlativo M001 en la nube
             val correlativeRef = firestore.collection("correlativos").document(saleEntity.serie)
@@ -494,6 +594,7 @@ class FirestoreSyncService(
                 "fechaCierre" to (shift.fechaCierre ?: ""),
                 "montoInicial" to shift.montoInicial,
                 "totalVentasEfectivo" to shift.totalVentasEfectivo,
+                "totalVentasDigital" to shift.totalVentasDigital,
                 "totalIngresos" to shift.totalIngresos,
                 "totalEgresos" to shift.totalEgresos,
                 "montoEsperado" to shift.montoEsperado,
@@ -601,6 +702,46 @@ class FirestoreSyncService(
                 }
             } catch (_: Exception) {}
 
+            // Descargar turnos y movimientos de caja
+            try {
+                val turnosSnap = firestore.collection("caja_turnos").get().await()
+                for (doc in turnosSnap.documents) {
+                    val data = doc.data ?: continue
+                    val shift = CashShiftEntity(
+                        id = doc.id,
+                        fechaApertura = (data["fechaApertura"] as? String) ?: "",
+                        fechaCierre = data["fechaCierre"] as? String,
+                        montoInicial = (data["montoInicial"] as? Number)?.toDouble() ?: 0.0,
+                        totalVentasEfectivo = (data["totalVentasEfectivo"] as? Number)?.toDouble() ?: 0.0,
+                        totalVentasDigital = (data["totalVentasDigital"] as? Number)?.toDouble() ?: 0.0,
+                        totalIngresos = (data["totalIngresos"] as? Number)?.toDouble() ?: 0.0,
+                        totalEgresos = (data["totalEgresos"] as? Number)?.toDouble() ?: 0.0,
+                        montoFinalReal = (data["montoFinalReal"] as? Number)?.toDouble(),
+                        diferencia = (data["diferencia"] as? Number)?.toDouble(),
+                        estado = (data["estado"] as? String) ?: "abierta",
+                        cajero = (data["cajero"] as? String) ?: "Cajero Principal",
+                        observaciones = data["observaciones"] as? String,
+                        sincronizado = 1
+                    )
+                    db.cashDao().insertOrUpdateShift(shift)
+                }
+
+                val movsSnap = firestore.collection("caja_movimientos").get().await()
+                for (doc in movsSnap.documents) {
+                    val data = doc.data ?: continue
+                    val mov = CashMovementEntity(
+                        id = doc.id,
+                        turnoId = (data["turnoId"] as? String) ?: "",
+                        tipo = (data["tipo"] as? String) ?: "ingreso",
+                        monto = (data["monto"] as? Number)?.toDouble() ?: 0.0,
+                        motivo = (data["motivo"] as? String) ?: "Movimiento",
+                        fecha = (data["fecha"] as? String) ?: "",
+                        sincronizado = 1
+                    )
+                    db.cashDao().insertMovement(mov)
+                }
+            } catch (_: Exception) {}
+
             val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
             _syncStatus.value = SyncStatus(
                 status = SyncStateStatus.SYNCED,
@@ -613,6 +754,62 @@ class FirestoreSyncService(
                 status = SyncStateStatus.ERROR,
                 message = "Fallo de sincronización: ${e.message}"
             )
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Sincroniza la cola local de salida (ventas, turnos y movimientos pendientes de subida).
+     * Garantiza el funcionamiento 100% Offline-First sin pérdida de información.
+     */
+    suspend fun syncPendingOutbox(): Result<Int> = withContext(Dispatchers.IO) {
+        try {
+            var syncedCount = 0
+
+            // 1. Sincronizar turnos pendientes
+            val pendingShifts = db.cashDao().getPendingSyncShifts()
+            for (shift in pendingShifts) {
+                val res = uploadShift(shift)
+                if (res.isSuccess) {
+                    db.cashDao().markShiftAsSynced(shift.id)
+                    syncedCount++
+                }
+            }
+
+            // 2. Sincronizar movimientos de caja pendientes
+            val pendingMovements = db.cashDao().getPendingSyncMovements()
+            for (mov in pendingMovements) {
+                val res = uploadMovement(mov)
+                if (res.isSuccess) {
+                    db.cashDao().markMovementAsSynced(mov.id)
+                    syncedCount++
+                }
+            }
+
+            // 3. Sincronizar ventas offline pendientes
+            val pendingSales = db.saleDao().getPendingSyncSales()
+            for (sale in pendingSales) {
+                val details = db.saleDao().getDetailsForSale(sale.id)
+                val res = uploadSale(sale, details)
+                if (res.isSuccess) {
+                    db.saleDao().markSaleAsSynced(sale.id)
+                    syncedCount++
+                }
+            }
+
+            if (syncedCount > 0) {
+                val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+                _syncStatus.update {
+                    it.copy(
+                        status = SyncStateStatus.SYNCED,
+                        lastSyncTime = timeFormat.format(Date()),
+                        message = "$syncedCount operaciones offline sincronizadas"
+                    )
+                }
+            }
+
+            Result.success(syncedCount)
+        } catch (e: Exception) {
             Result.failure(e)
         }
     }

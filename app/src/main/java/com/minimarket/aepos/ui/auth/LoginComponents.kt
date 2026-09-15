@@ -3,7 +3,6 @@ package com.minimarket.aepos.ui.auth
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Login
@@ -26,7 +25,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.minimarket.aepos.data.repository.AuthRepository
 import com.minimarket.aepos.domain.model.User
-import com.minimarket.aepos.ui.theme.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,17 +53,14 @@ class AuthViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val user = authRepository.getPersistedSession()
-            if (user != null) {
-                _uiState.update {
-                    it.copy(
-                        isAuthenticated = true,
-                        currentUser = user,
-                        isLoading = false,
-                        errorMessage = null
-                    )
-                }
-            } else {
-                _uiState.update { it.copy(isAuthenticated = false, isLoading = false) }
+            // Requerir inicio de sesión cada vez que se abre la app
+            _uiState.update {
+                it.copy(
+                    isAuthenticated = false,
+                    currentUser = user,
+                    isLoading = false,
+                    errorMessage = null
+                )
             }
         }
     }
@@ -127,25 +122,27 @@ fun LoginScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    var identifier by remember { mutableStateOf("") }
+    var identifier by remember(state.currentUser) { 
+        mutableStateOf(state.currentUser?.email ?: state.currentUser?.username ?: "") 
+    }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedBorderColor = Emerald500,
-        unfocusedBorderColor = Slate700,
-        focusedContainerColor = Slate850,
-        unfocusedContainerColor = Slate850,
-        focusedTextColor = Color.White,
-        unfocusedTextColor = Color.White,
-        focusedLabelColor = Emerald400,
-        unfocusedLabelColor = Slate400
+        focusedBorderColor = MaterialTheme.colorScheme.primary,
+        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+        focusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+        unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+        focusedLabelColor = MaterialTheme.colorScheme.primary,
+        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
     )
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Slate950),
+            .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
         // Círculo decorativo con glow de fondo
@@ -154,20 +151,20 @@ fun LoginScreen(
                 .size(340.dp)
                 .background(
                     brush = Brush.radialGradient(
-                        colors = listOf(Emerald500.copy(alpha = 0.18f), Color.Transparent)
+                        colors = listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f), Color.Transparent)
                     )
                 )
         )
 
         Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Slate900),
-            border = BorderStroke(1.dp, Slate800),
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .widthIn(max = 400.dp)
                 .padding(14.dp)
-                .shadow(16.dp, RoundedCornerShape(24.dp))
+                .shadow(16.dp, MaterialTheme.shapes.large)
         ) {
             Column(
                 modifier = Modifier
@@ -175,14 +172,14 @@ fun LoginScreen(
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Logo Icono con degradado esmeralda
+                // Logo Icono con degradado esmeralda / teal
                 Box(
                     modifier = Modifier
                         .size(60.dp)
-                        .clip(RoundedCornerShape(18.dp))
+                        .clip(MaterialTheme.shapes.medium)
                         .background(
                             brush = Brush.linearGradient(
-                                colors = listOf(Emerald500, Teal400)
+                                colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary)
                             )
                         ),
                     contentAlignment = Alignment.Center
@@ -190,7 +187,7 @@ fun LoginScreen(
                     Icon(
                         imageVector = Icons.Default.Storefront,
                         contentDescription = "POS Logo",
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -200,13 +197,13 @@ fun LoginScreen(
                 Text(
                     text = "AE POS Minimarket",
                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black),
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Text(
                     text = "Terminal de Ventas & Inventario",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Slate400,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 2.dp)
                 )
 
@@ -215,9 +212,9 @@ fun LoginScreen(
                 // Mensaje de Error
                 state.errorMessage?.let { error ->
                     Surface(
-                        color = Red900.copy(alpha = 0.3f),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, Red500.copy(alpha = 0.4f)),
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f),
+                        shape = MaterialTheme.shapes.small,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.4f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -227,13 +224,13 @@ fun LoginScreen(
                             Icon(
                                 imageVector = Icons.Default.Warning,
                                 contentDescription = null,
-                                tint = Red400,
+                                tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = error,
-                                color = Red400,
+                                color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium)
                             )
                         }
@@ -246,17 +243,17 @@ fun LoginScreen(
                     value = identifier,
                     onValueChange = { identifier = it },
                     label = { Text("Correo o Usuario") },
-                    placeholder = { Text("ej. admin o cajero@tienda.com", color = Slate500) },
+                    placeholder = { Text("ej. admin o cajero@tienda.com", color = MaterialTheme.colorScheme.onSurfaceVariant) },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = null,
-                            tint = Emerald400
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     },
                     singleLine = true,
                     colors = textFieldColors,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = MaterialTheme.shapes.small,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -271,7 +268,7 @@ fun LoginScreen(
                         Icon(
                             imageVector = Icons.Default.Lock,
                             contentDescription = null,
-                            tint = Emerald400
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     },
                     trailingIcon = {
@@ -279,7 +276,7 @@ fun LoginScreen(
                             Icon(
                                 imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                                 contentDescription = null,
-                                tint = Slate400
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     },
@@ -287,7 +284,7 @@ fun LoginScreen(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     singleLine = true,
                     colors = textFieldColors,
-                    shape = RoundedCornerShape(14.dp),
+                    shape = MaterialTheme.shapes.small,
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -298,16 +295,16 @@ fun LoginScreen(
                     onClick = { viewModel.login(identifier, password) },
                     enabled = !state.isLoading && identifier.isNotBlank() && password.isNotBlank(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Emerald500,
-                        disabledContainerColor = Slate800
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh
                     ),
-                    shape = RoundedCornerShape(14.dp),
+                    shape = MaterialTheme.shapes.small,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp)
                 ) {
                     if (state.isLoading) {
-                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp))
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(22.dp))
                     } else {
                         Icon(imageVector = Icons.AutoMirrored.Filled.Login, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
@@ -321,4 +318,3 @@ fun LoginScreen(
         }
     }
 }
-
